@@ -6,6 +6,7 @@ import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { config } from "../config.js";
 import { ensureKeystore, KEY_ALIAS } from "./signing.js";
+import { listZip } from "./zipSafe.js";
 
 const run = promisify(execFile);
 
@@ -18,11 +19,11 @@ const scrub = (s: string) => (config.keystorePassword ? s.split(config.keystoreP
 
 async function tool(
   log: string[], label: string, bin: string, args: string[],
-  opts: { cwd?: string; env?: NodeJS.ProcessEnv; okCodes?: number[] } = {},
+  opts: { cwd?: string; env?: NodeJS.ProcessEnv; okCodes?: number[]; timeoutMs?: number; tail?: boolean } = {},
 ): Promise<string> {
   try {
     const { stdout } = await run(bin, args, {
-      cwd: opts.cwd, env: opts.env, timeout: config.buildTimeoutMs, maxBuffer: 8 * 1024 * 1024,
+      cwd: opts.cwd, env: opts.env, timeout: opts.timeoutMs ?? config.buildTimeoutMs, maxBuffer: 16 * 1024 * 1024,
     });
     log.push(`✔ ${label}`);
     return String(stdout);
@@ -33,8 +34,9 @@ async function tool(
       throw new Error(m);
     }
     if (opts.okCodes?.includes(e?.code)) { log.push(`✔ ${label} (nada que quitar)`); return ""; }
-    const detail = scrub(String(e?.stderr || e?.stdout || e?.message || e)
-      .split("\n").map((s) => s.trim()).filter((s) => s && !s.startsWith("Picked up")).slice(0, 5).join(" | "));
+    const lines = String(e?.stderr || e?.stdout || e?.message || e)
+      .split("\n").map((s) => s.trim()).filter((s) => s && !s.startsWith("Picked up"));
+    const detail = scrub((opts.tail ? lines.slice(-6) : lines.slice(0, 5)).join(" | ").slice(0, 700));
     log.push(`✖ ${label}: ${detail}`);
     throw new Error(`${label} falló: ${detail}`);
   }
@@ -53,8 +55,9 @@ async function sha256File(p: string) {
   return h.digest("hex");
 }
 
-// Flujo: copiar original -> quitar firma antigua -> aplicar cambios -> zipalign -> apksigner -> verificar.
-export async function rebuildApk(original: string, changes: BuildChange[], workDir: string): Promise<BuildResult> {
+// Flujo normal: copiar original -> quitar firma antigua -> aplicar cambios -> zipalign -> apksigner -> verificar.
+// Con decodedDir (cambios de Apktool): se reconstruye primero con Apktool y luego se aplican los cambios de texto/imagen.
+export async function rebuildApk(original: string, changes: BuildChange[], workDir: string, decodedDir?: string): Promise<BuildResult> {
   const log: string[] = [];
   try {
     const ks = await ensureKeystore();
@@ -63,12 +66,21 @@ export async function rebuildApk(original: string, changes: BuildChange[], workD
     await mkdir(join(workDir, "files"), { recursive: true });
     const work = join(workDir, "work.apk"), aligned = join(workDir, "aligned.apk"), out = join(workDir, "signed.apk");
 
-    await copyFile(original, work);
-    log.push("✔ Copia de trabajo del APK original");
-
-    await tool(log, "Quitar firma original", "zip",
-      ["-q", "-d", work, "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.EC", "META-INF/MANIFEST.MF"],
-      { okCodes: [12] });
+    if (decodedDir) {
+      await tool(log, "Reconstruir recursos con Apktool", config.apktoolBin,
+        ["b", "-f", decodedDir, "-o", work, ...(config.aapt2Bin ? ["-a", config.aapt2Bin] : [])],
+        { env: { ...process.env, JAVA_TOOL_OPTIONS: config.apktoolJavaOpts }, timeoutMs: config.apktoolTimeoutMs, tail: true });
+      const present = new Set((await listZip(work)).map((e) => e.path));
+      for (const c of changes)
+        if (!present.has(c.path)) log.push(`⚠ No aplicado: ${c.path} (esa ruta cambió al reconstruir con Apktool)`);
+      changes = changes.filter((c) => present.has(c.path));
+    } else {
+      await copyFile(original, work);
+      log.push("✔ Copia de trabajo del APK original");
+      await tool(log, "Quitar firma original", "zip",
+        ["-q", "-d", work, "META-INF/*.SF", "META-INF/*.RSA", "META-INF/*.DSA", "META-INF/*.EC", "META-INF/MANIFEST.MF"],
+        { okCodes: [12] });
+    }
 
     if (changes.length) {
       for (const c of changes) {
@@ -97,5 +109,7 @@ export async function rebuildApk(original: string, changes: BuildChange[], workD
   } catch (e: any) {
     e.buildLog = log;
     throw e;
+  } finally {
+    if (decodedDir) await rm(join(decodedDir, "build"), { recursive: true, force: true }).catch(() => {});
   }
-}
+    }
