@@ -1,0 +1,17 @@
+export const config = {
+  port: Number(process.env.PORT ?? 3000),
+  databaseUrl: process.env.DATABASE_URL ?? "postgres://kendy:kendy@localhost:5432/kendy",
+  storageDir: process.env.STORAGE_DIR ?? "./data",
+  maxApkBytes: Number(process.env.MAX_APK_MB ?? 200) * 1024 * 1024,
+  aaptBin: process.env.AAPT_BIN ?? "aapt",
+  zipalignBin: process.env.ZIPALIGN_BIN ?? "zipalign",
+  apksignerBin: process.env.APKSIGNER_BIN ?? "apksigner",
+  keytoolBin: process.env.KEYTOOL_BIN ?? "keytool",
+  keystorePassword: process.env.KEYSTORE_PASSWORD ?? "",
+  linkTtlHours: Number(process.env.LINK_TTL_HOURS ?? 168),
+  maxEntries: 50_000,
+  maxUncompressedBytes: 2 * 1024 ** 3,
+  maxCompressionRatio: 200,
+  toolTimeoutMs: 30_000,
+  buildTimeoutMs: 120_000,
+};
