@@ -7,6 +7,9 @@ export const config = {
   zipalignBin: process.env.ZIPALIGN_BIN ?? "zipalign",
   apksignerBin: process.env.APKSIGNER_BIN ?? "apksigner",
   keytoolBin: process.env.KEYTOOL_BIN ?? "keytool",
+  apktoolBin: process.env.APKTOOL_BIN ?? "apktool",
+  aapt2Bin: process.env.AAPT2_BIN ?? "",
+  apktoolJavaOpts: process.env.APKTOOL_JAVA_OPTS ?? "-Xmx320m",
   keystorePassword: process.env.KEYSTORE_PASSWORD ?? "",
   linkTtlHours: Number(process.env.LINK_TTL_HOURS ?? 168),
   maxEntries: 50_000,
@@ -14,4 +17,5 @@ export const config = {
   maxCompressionRatio: 200,
   toolTimeoutMs: 30_000,
   buildTimeoutMs: 120_000,
+  apktoolTimeoutMs: 240_000,
 };
