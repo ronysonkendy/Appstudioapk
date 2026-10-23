@@ -7,6 +7,8 @@ import { config } from "../config.js";
 import { pool } from "../db/pool.js";
 import { projectDir } from "../storage/local.js";
 import { rebuildApk } from "../services/rebuild.js";
+import { decodedDir } from "../services/decodedStore.js";
+import { enqueue } from "../services/queue.js";
 
 const OWNER = "local"; // TODO: autenticación real
 const UUID = /^[0-9a-f-]{36}$/;
@@ -38,10 +40,6 @@ function view(b: any) {
   };
 }
 
-// Una sola compilación a la vez (el plan gratuito tiene poca memoria).
-let chain: Promise<void> = Promise.resolve();
-const enqueue = (fn: () => Promise<void>) => { chain = chain.then(fn).catch(() => {}); };
-
 export async function recoverBuilds() {
   await pool.query(
     `UPDATE builds SET status='failed', error='El servidor se reinició durante la compilación.', finished_at=now()
@@ -62,7 +60,10 @@ async function runBuild(projectId: string, buildId: string) {
     const changes = rows.map((r) => ({ path: r.path as string, file: join(projectDir(projectId), "changes", r.stored_name) }));
     const { rows: nr } = await pool.query(`SELECT number FROM builds WHERE id=$1`, [buildId]);
 
-    const res = await rebuildApk(p.original_path, changes, workDir);
+    const { rows: dr } = await pool.query(`SELECT count(*)::int AS n FROM decode_edits WHERE project_id=$1`, [projectId]);
+    const decEdits: number = dr[0].n;
+    const useApktool = p.decode_status === "ready" && decEdits > 0;
+    const res = await rebuildApk(p.original_path, changes, workDir, useApktool ? decodedDir(projectId) : undefined);
     log = res.log;
     const buildsDir = join(projectDir(projectId), "builds");
     await mkdir(buildsDir, { recursive: true });
@@ -74,7 +75,7 @@ async function runBuild(projectId: string, buildId: string) {
          signer_sha256=$7, changes_count=$8, log=$9, download_token=$10,
          expires_at=now() + make_interval(hours => $11::int), finished_at=now()
        WHERE id=$1`,
-      [buildId, res.verified, fileName, stored, res.size, res.sha256, res.signerSha256, changes.length,
+      [buildId, res.verified, fileName, stored, res.size, res.sha256, res.signerSha256, changes.length + (useApktool ? decEdits : 0),
        log.join("\n"), randomBytes(24).toString("hex"), config.linkTtlHours]);
   } catch (e: any) {
     const l: string[] = e?.buildLog ?? log;
