@@ -13,6 +13,7 @@ import { migrate, pool } from "./db/pool.js";
 import { projectRoutes } from "./routes/projects.js";
 import { fileRoutes } from "./routes/files.js";
 import { buildRoutes, recoverBuilds } from "./routes/builds.js";
+import { decodedRoutes, recoverDecodes } from "./routes/decoded.js";
 import { signingConfigured } from "./services/signing.js";
 import { ZipError } from "./services/zipSafe.js";
 
@@ -44,6 +45,23 @@ const has = async (bin: string, args: string[]) => {
   try { await run(bin, args, { timeout: 5000 }); return true; } catch (e: any) { return e?.code !== "ENOENT"; }
 };
 
+// Las comprobaciones de herramientas arrancan Java: se guardan 60 s para no repetirlas en cada visita.
+let toolsCache: { t: number; v: Record<string, unknown> } | null = null;
+async function toolsStatus() {
+  if (toolsCache && Date.now() - toolsCache.t < 60_000) return toolsCache.v;
+  const missing: string[] = [];
+  if (!(await has("zip", ["-v"]))) missing.push("zip");
+  if (!(await has(config.zipalignBin, ["-h"]))) missing.push("zipalign");
+  if (!(await has(config.apksignerBin, ["--version"]))) missing.push("apksigner");
+  if (!(await has(config.keytoolBin, ["-help"]))) missing.push("keytool");
+  const apktoolMissing: string[] = [];
+  if (!(await has(config.apktoolBin, ["--version"]))) apktoolMissing.push("apktool");
+  if (!(await has(config.aapt2Bin || "aapt2", ["version"]))) apktoolMissing.push("aapt2");
+  const v = { missing, apktoolMissing };
+  toolsCache = { t: Date.now(), v };
+  return v;
+}
+
 let migrated = false;
 app.get("/health", async () => {
   const r: Record<string, unknown> = { ok: true, maxMb: config.maxApkBytes / 1024 / 1024 };
@@ -57,20 +75,20 @@ app.get("/health", async () => {
   try { await mkdir(config.storageDir, { recursive: true }); await access(config.storageDir, constants.W_OK); r.storage = true; }
   catch { r.storage = false; r.ok = false; }
 
-  const missing: string[] = [];
-  if (!(await has("zip", ["-v"]))) missing.push("zip");
-  if (!(await has(config.zipalignBin, ["-h"]))) missing.push("zipalign");
-  if (!(await has(config.apksignerBin, ["--version"]))) missing.push("apksigner");
-  if (!(await has(config.keytoolBin, ["-help"]))) missing.push("keytool");
+  const t = await toolsStatus();
+  const missing = [...(t.missing as string[])];
   if (!signingConfigured()) missing.push("KEYSTORE_PASSWORD");
   r.missing = missing;
   r.build = missing.length === 0;
+  r.apktool = (t.apktoolMissing as string[]).length === 0;
+  r.apktoolMissing = t.apktoolMissing;
   return r;
 });
 await app.register(projectRoutes);
 await app.register(fileRoutes);
 await app.register(buildRoutes);
+await app.register(decodedRoutes);
 
-try { await migrate(); migrated = true; await recoverBuilds(); }
+try { await migrate(); migrated = true; await recoverBuilds(); await recoverDecodes(); }
 catch (e) { app.log.error("Migración fallida: la base de datos no responde"); }
 await app.listen({ port: config.port, host: "0.0.0.0" });
