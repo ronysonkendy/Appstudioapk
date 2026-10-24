@@ -11,14 +11,15 @@ import { analyzeApk, extractIcon } from "../services/analyze.js";
 import { listZip, categorize, ZipError } from "../services/zipSafe.js";
 import { classify } from "../services/editable.js";
 
-const OWNER = "local"; // TODO módulo 6: autenticación real
-
 function err(reply: any, status: number, code: string, message: string) {
   return reply.code(status).send({ error: { code, message } });
 }
 
 export async function projectRoutes(app: FastifyInstance) {
   app.post("/api/projects", async (req, reply) => {
+    const { rows: cnt } = await pool.query(`SELECT count(*)::int AS n FROM projects WHERE owner_id=$1`, [req.userId]);
+    if (cnt[0].n >= config.maxProjectsPerUser)
+      return err(reply, 403, "QUOTA", `Llegaste al límite de ${config.maxProjectsPerUser} proyectos. Elimina alguno para importar otro.`);
     const part = await req.file();
     if (!part) return err(reply, 400, "NO_FILE", "Envía un archivo APK en el campo 'file'.");
     if (!/\.apk$/i.test(part.filename)) return err(reply, 400, "BAD_EXT", "El archivo debe tener extensión .apk.");
@@ -45,7 +46,7 @@ export async function projectRoutes(app: FastifyInstance) {
       await pool.query(
         `INSERT INTO projects (id, owner_id, name, package_name, version_name, version_code, min_sdk, target_sdk,
           original_path, original_sha256, size_bytes, info) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-        [id, OWNER, name, info.packageName, info.versionName, info.versionCode, info.minSdk, info.targetSdk,
+        [id, req.userId, name, info.packageName, info.versionName, info.versionCode, info.minSdk, info.targetSdk,
          dest, hash.digest("hex"), bytes, info]);
       return reply.code(201).send({ id, name, sizeBytes: bytes, info });
     } catch (e) {
@@ -56,26 +57,26 @@ export async function projectRoutes(app: FastifyInstance) {
     }
   });
 
-  app.get("/api/projects", async () => {
+  app.get("/api/projects", async (req) => {
     const { rows } = await pool.query(
       `SELECT id, name, package_name, version_name, size_bytes, status, updated_at FROM projects
-       WHERE owner_id=$1 ORDER BY updated_at DESC`, [OWNER]);
+       WHERE owner_id=$1 ORDER BY updated_at DESC`, [req.userId]);
     return rows;
   });
 
-  async function getProject(id: string) {
+  async function getProject(id: string, uid: string) {
     if (!/^[0-9a-f-]{36}$/.test(id)) return null;
-    const { rows } = await pool.query(`SELECT * FROM projects WHERE id=$1 AND owner_id=$2`, [id, OWNER]);
+    const { rows } = await pool.query(`SELECT * FROM projects WHERE id=$1 AND owner_id=$2`, [id, uid]);
     return rows[0] ?? null;
   }
 
   app.get<{ Params: { id: string } }>("/api/projects/:id", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     return p ?? err(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
   });
 
   app.get<{ Params: { id: string }; Querystring: { q?: string } }>("/api/projects/:id/files", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return err(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const q = req.query.q?.toLowerCase();
     const entries = await listZip(p.original_path);
@@ -89,7 +90,7 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/api/projects/:id/icon", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return err(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const ch = p.info.iconPath
       ? (await pool.query(`SELECT stored_name FROM project_changes WHERE project_id=$1 AND path=$2`, [p.id, p.info.iconPath])).rows[0]
@@ -102,10 +103,10 @@ export async function projectRoutes(app: FastifyInstance) {
   });
 
   app.delete<{ Params: { id: string } }>("/api/projects/:id", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return err(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     await pool.query(`DELETE FROM projects WHERE id=$1`, [p.id]);
     await removeProjectDir(p.id);
     return reply.code(204).send();
   });
-                                                                                                                                     }
+      }
