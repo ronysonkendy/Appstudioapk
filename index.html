@@ -41,7 +41,7 @@ h1{margin:0 0 4px;font-size:24px}h2{margin:0 0 12px;font-size:17px}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
 .chip{padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;min-height:36px}
 .chip.on{border-color:var(--accent);background:rgba(79,140,255,.18)}
-input[type=search],input[type=text]{width:100%;min-height:46px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);outline:none}
+input[type=search],input[type=text],input[type=password]{width:100%;min-height:46px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);outline:none}
 input:focus{border-color:var(--accent)}
 .files{max-height:420px;overflow-y:auto;border:1px solid var(--line);border-radius:12px}
 .file{display:flex;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer;font-family:ui-monospace,Menlo,monospace;font-size:13px}
@@ -54,6 +54,7 @@ input:focus{border-color:var(--accent)}
 .toast.ok{border-color:var(--ok)}.toast.err{border-color:var(--err)}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .toast.warn{border-color:var(--warn)}
+.nav[hidden]{display:none}
 .btn.sm{min-height:40px;padding:6px 12px;border-radius:10px}
 .tag{font-style:normal}
 em.tag{margin-left:6px;color:var(--accent)}
@@ -92,8 +93,10 @@ select{width:100%;min-height:46px;padding:8px 12px;border-radius:12px;border:1px
     <a class="nav" href="#/projects">Compilación y enlaces <span class="tag">en proyecto</span></a>
     <span class="nav off">Firma digital <span class="tag">módulo 5</span></span>
     <span class="nav off">Versiones <span class="tag">módulo 5</span></span>
+    <a class="nav" id="navAdmin" href="#/admin" data-r="admin" hidden>Administración</a>
     <a class="nav" href="#/diag" data-r="diag">Diagnóstico</a>
     <a class="nav" href="#/settings" data-r="settings">Configuración</a>
+    <div id="who" style="margin-top:auto;padding:12px 4px 4px"></div>
   </aside>
   <main id="view"></main>
 </div>
@@ -136,9 +139,15 @@ function explainHttp(status, ct) {
 }
 async function api(path, opts) {
   const url = apiBase() + path; let res;
-  try { res = await fetch(url, opts); }
+  const headers = { ...((opts && opts.headers) || {}) };
+  if (getToken()) headers.Authorization = "Bearer " + getToken();
+  try { res = await fetch(url, { ...(opts || {}), headers }); }
   catch (e) { const m = explainNetwork(url); logErr("red", m, url + " · " + e.message); throw new Error(m); }
   const ct = res.headers.get("content-type") || "";
+  if (res.status === 401 && !path.startsWith("/api/auth/")) {
+    clearAuth(); location.hash = "#/login";
+    throw new Error("Tu sesión expiró. Inicia sesión otra vez.");
+  }
   if (!res.ok) {
     let m; try { m = (await res.json()).error.message; } catch {}
     m = m || explainHttp(res.status, ct);
@@ -149,6 +158,54 @@ async function api(path, opts) {
   return res.json();
 }
 
+/* ---------- Cuenta (login) ---------- */
+const getToken = () => localStorage.getItem("kendy_token") || "";
+function setAuth(token, user) {
+  localStorage.setItem("kendy_token", token);
+  localStorage.setItem("kendy_user", user?.email || "");
+  localStorage.setItem("kendy_role", user?.role || "");
+}
+function clearAuth() { localStorage.removeItem("kendy_token"); localStorage.removeItem("kendy_user"); localStorage.removeItem("kendy_role"); renderWho(); }
+function renderWho() {
+  const na = $("#navAdmin"); if (na) na.hidden = !(getToken() && localStorage.getItem("kendy_role") === "admin");
+  const w = $("#who"); if (!w) return;
+  if (getToken()) {
+    w.innerHTML = `<div class="perm" style="word-break:break-all;margin-bottom:6px">${esc(localStorage.getItem("kendy_user") || "")}</div><button class="btn sm" id="logout" style="width:100%">Cerrar sesión</button>`;
+    $("#logout").onclick = async () => {
+      try { await api("/api/auth/logout", { method: "POST" }); } catch {}
+      clearAuth(); location.hash = "#/login";
+    };
+  } else w.innerHTML = '<div class="perm">Sin sesión iniciada</div>';
+}
+// Las imágenes del servidor exigen sesión: se piden con la cabecera y se muestran como blob.
+async function authBlobUrl(path) {
+  const res = await fetch(apiBase() + path, { headers: { Authorization: "Bearer " + getToken() } });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return URL.createObjectURL(await res.blob());
+}
+function hydrateImgs(root) {
+  root.querySelectorAll("img[data-auth]").forEach(i => authBlobUrl(i.dataset.auth).then(u => { i.src = u; }).catch(() => { i.style.visibility = "hidden"; }));
+}
+function viewLogin() {
+  view.innerHTML = `<h1>Iniciar sesión</h1><p class="sub">Cada cuenta ve solo sus propios proyectos. La primera cuenta que se crea en el servidor es la administradora.</p>
+  <div class="card"><label class="perm" for="lEmail">Correo</label><input type="text" id="lEmail" inputmode="email" autocomplete="username" autocapitalize="none">
+   <label class="perm" for="lPass" style="display:block;margin-top:12px">Contraseña (mínimo 8 caracteres)</label><input type="password" id="lPass" autocomplete="current-password">
+   <div class="row" style="margin-top:14px"><button class="btn primary" id="lGo">Entrar</button><button class="btn" id="lReg">Crear cuenta</button></div></div>
+  <p class="perm">Servidor: ${esc(apiBase() || "(el mismo de esta página)")} · <a href="#/settings" style="color:var(--accent)">cambiar</a> · <a href="#/diag" style="color:var(--accent)">diagnóstico</a></p>`;
+  const go = async kind => {
+    const email = $("#lEmail").value.trim(), password = $("#lPass").value;
+    if (!email || !password) return toast("Escribe tu correo y tu contraseña.", "warn");
+    try {
+      const r = await api("/api/auth/" + kind, { method: "POST", headers: jsonHdr, body: JSON.stringify({ email, password }) });
+      setAuth(r.token, r.user); renderWho();
+      toast(kind === "register" ? "Cuenta creada" : "Sesión iniciada"); location.hash = "#/home";
+    } catch (e) { toast(e.message, "err"); }
+  };
+  $("#lGo").onclick = () => go("login");
+  $("#lReg").onclick = () => go("register");
+  $("#lPass").onkeydown = e => { if (e.key === "Enter") go("login"); };
+}
+
 /* ---------- Vistas ---------- */
 const view = $("#view");
 
@@ -157,7 +214,12 @@ function viewHome() {
   <p class="sub">Importa un APK que tengas derecho a modificar, explora su contenido y edita sus recursos.</p>
   <div class="card"><a class="btn primary big" href="#/import">⬆ Importar APK</a>
   <p class="sub" style="margin:14px 0 0">Ahora disponible: carga, análisis, explorador, editor de texto, reemplazo de imágenes e iconos, reconstrucción, firma y enlaces de descarga. También puedes editar nombre, versión, permisos y XML con Apktool (pestaña Propiedades).</p></div>
-  <div class="card"><h2>Estado del servidor</h2><div id="health">Comprobando…</div></div>`;
+  <div class="card"><h2>Estado del servidor</h2><div id="health">Comprobando…</div></div>
+  <div class="card" id="usage" hidden></div>`;
+  if (getToken()) api("/api/usage").then(u => {
+    const c = $("#usage"); if (!c) return; c.hidden = false;
+    c.innerHTML = `<h2>Tu uso</h2><div class="kv"><div>Proyectos</div><div>${u.projects} de ${u.projectLimit}</div><div>Espacio</div><div>${fmt(u.storageBytes)} de ${fmt(u.storageLimitBytes)}</div></div>`;
+  }).catch(() => {});
   api("/health").then(h => {
     const bad = h.ok === false;
     $("#health").style.color = bad ? "var(--warn)" : "var(--ok)";
@@ -197,10 +259,11 @@ function upload(file) {
   xhr.onload = () => {
     let body = {}; try { body = JSON.parse(xhr.responseText); } catch {}
     if (xhr.status === 201) { toast("APK analizado correctamente"); location.hash = "#/project/" + body.id; }
+    else if (xhr.status === 401) { clearAuth(); location.hash = "#/login"; toast("Tu sesión expiró. Inicia sesión otra vez.", "err"); }
     else { $("#prog").hidden = true; const m = body.error?.message || explainHttp(xhr.status, xhr.getResponseHeader("content-type") || ""); logErr("subida", m, xhr.status); toast(m, "err"); }
   };
   xhr.onerror = () => { $("#prog").hidden = true; toast(explainNetwork(apiBase() + "/api/projects"), "err"); };
-  xhr.open("POST", apiBase() + "/api/projects"); xhr.send(fd);
+  xhr.open("POST", apiBase() + "/api/projects"); xhr.setRequestHeader("Authorization", "Bearer " + getToken()); xhr.send(fd);
 }
 
 async function viewProjects() {
@@ -210,10 +273,11 @@ async function viewProjects() {
     const list = $("#list");
     if (!rows.length) { list.innerHTML = `<div class="card">Aún no hay proyectos. <a href="#/import" style="color:var(--accent)">Importa un APK</a>.</div>`; return; }
     list.innerHTML = rows.map(p => `<div class="card" style="margin:0">
-      <div class="row"><img class="icon" style="width:52px;height:52px" src="${apiBase()}/api/projects/${esc(p.id)}/icon" alt="" onerror="this.style.visibility='hidden'">
+      <div class="row"><img class="icon" style="width:52px;height:52px" data-auth="/api/projects/${esc(p.id)}/icon" alt="">
       <div style="min-width:0"><b>${esc(p.name)}</b><div class="perm">${esc(p.package_name)}</div><div class="perm">v${esc(p.version_name)} · ${fmt(Number(p.size_bytes))}</div></div></div>
       <div class="row" style="margin-top:12px"><a class="btn primary" href="#/project/${esc(p.id)}">Abrir</a>
       <button class="btn danger" data-del="${esc(p.id)}">Eliminar</button></div></div>`).join("");
+    hydrateImgs(list);
     list.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
       if (!confirm("¿Eliminar este proyecto y sus archivos? No se puede deshacer.")) return;
       try { await api("/api/projects/" + b.dataset.del, { method: "DELETE" }); toast("Proyecto eliminado"); viewProjects(); }
@@ -260,7 +324,7 @@ function drawTab() {
 
 function renderInfo(el) {
   const { p } = CUR, i = p.info, base = pbase(CUR.id);
-  el.innerHTML = `<div class="card"><div class="row"><img class="icon" src="${base}/icon?v=${CUR.iconV}" alt="" onerror="this.style.visibility='hidden'">
+  el.innerHTML = `<div class="card"><div class="row"><img class="icon" alt="" style="visibility:hidden">
   <div class="kv" style="flex:1;min-width:240px">
    <div>Paquete</div><div>${esc(i.packageName)}</div>
    <div>Versión</div><div>${esc(i.versionName)} (código ${esc(i.versionCode)})</div>
@@ -274,7 +338,9 @@ function renderInfo(el) {
    <div class="note" style="margin-top:14px" id="iconNote" hidden>El icono no se puede mostrar como imagen (probablemente es un icono adaptativo XML). Se puede ver en la pestaña Propiedades (Apktool).</div></div>
   <div class="card"><h2>Permisos declarados (${i.permissions.length})</h2>
    ${i.permissions.length ? i.permissions.map(x => `<div class="perm">${esc(x)}</div>`).join("") : "Ninguno"}</div>`;
-  const probe = new Image(); probe.onerror = () => { const n = $("#iconNote"); if (n) n.hidden = false; }; probe.src = base + "/icon?v=" + CUR.iconV;
+  authBlobUrl(`/api/projects/${enc(CUR.id)}/icon?v=${CUR.iconV}`)
+    .then(u => { const i = el.querySelector("img.icon"); if (i) { i.src = u; i.style.visibility = "visible"; } })
+    .catch(() => { const n = $("#iconNote"); if (n) n.hidden = false; });
 }
 
 function renderFiles(el) {
@@ -347,12 +413,23 @@ function stopPoll() {
 const linkUrl = path => (apiBase() || location.origin) + path;
 const BSTATUS = { queued: "En cola", running: "Compilando…", success: "Compilada", failed: "Falló" };
 
-function buildCard(b) {
+function renderCompare(r) {
+  const block = (title, arr, fmtItem) => arr.length ? `<div class="perm" style="margin-top:8px"><b>${title} (${arr.length})</b></div>${arr.slice(0, 60).map(fmtItem).join("")}` : "";
+  return `<div class="chk" style="margin-top:10px"><b>#${esc(r.version)} contra ${esc(r.against)}</b>
+    <small>${fmt(r.sizeA)} → ${fmt(r.sizeB)} · +${r.counts.added} añadidos · −${r.counts.removed} quitados · ≠${r.counts.changed} cambiados (la firma no cuenta)</small>
+    ${block("Añadidos", r.added, p => `<div class="perm">+ ${esc(p)}</div>`)}
+    ${block("Quitados", r.removed, p => `<div class="perm">− ${esc(p)}</div>`)}
+    ${block("Cambiados", r.changed, c => `<div class="perm">≠ ${esc(c.path)} (${fmt(c.sizeA)} → ${fmt(c.sizeB)})</div>`)}
+    ${!(r.counts.added + r.counts.removed + r.counts.changed) ? '<div class="perm" style="margin-top:8px">Sin diferencias en los archivos.</div>' : ""}</div>`;
+}
+
+function buildCard(b, all = []) {
   const st = b.status, live = !!b.downloadPath, url = live ? linkUrl(b.downloadPath) : "";
   const color = st === "success" ? "var(--ok)" : st === "failed" ? "var(--err)" : "var(--warn)";
   const ok = st === "success";
-  return `<div class="card"><div class="row" style="justify-content:space-between"><b>Compilación #${b.number}</b><span style="color:${color}">${esc(BSTATUS[st])}</span></div>
+  return `<div class="card"><div class="row" style="justify-content:space-between"><b>Compilación #${b.number}${b.published ? " ⭐ publicada" : ""}</b><span style="color:${color}">${esc(BSTATUS[st])}</span></div>
   <div class="perm">${esc(fmtDate(b.createdAt))} · ${esc(b.changesCount)} cambio(s)</div>
+  ${ok ? `<div class="row" style="margin-top:10px;gap:8px"><input type="text" maxlength="200" placeholder="Nota de esta versión (opcional)" value="${esc(b.note || "")}" data-noteinput="${esc(b.id)}" style="flex:1;min-width:160px"><button class="btn sm" data-note="${esc(b.id)}">Guardar nota</button></div>` : ""}
   ${st === "failed" ? `<p class="note" style="margin-top:10px">${esc(b.error || "Error desconocido")}</p>` : ""}
   ${ok ? `<div class="kv" style="margin-top:10px"><div>Archivo</div><div class="perm">${esc(b.fileName)}</div><div>Tamaño</div><div>${fmt(b.sizeBytes || 0)}</div>
     <div>Firma</div><div>${b.verified ? "✔ verificada con apksigner" : "⚠ sin verificar"}</div><div>Certificado SHA-256</div><div class="perm">${esc(b.signerSha256)}</div>
@@ -360,7 +437,10 @@ function buildCard(b) {
    <div class="row" style="margin-top:12px">${live
      ? `<a class="btn primary" href="${esc(url)}">⬇ Descargar</a><button class="btn" data-copy="${esc(url)}">Copiar enlace</button><a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Abrir</a><button class="btn danger" data-revoke="${esc(b.id)}">Revocar</button>`
      : `<button class="btn" data-newlink="${esc(b.id)}">Generar enlace nuevo</button>`}
-     <button class="btn danger" data-delb="${esc(b.id)}">Eliminar</button></div>` : ""}
+     <button class="btn" data-pub="${esc(b.id)}" data-on="${b.published ? "0" : "1"}">${b.published ? "Quitar de publicada" : "⭐ Marcar como publicada"}</button>
+     <button class="btn danger" data-delb="${esc(b.id)}">Eliminar</button></div>
+   <div class="row" style="margin-top:10px;gap:8px"><select data-with="${esc(b.id)}" style="flex:1;min-width:150px"><option value="original">Comparar con: APK original</option>${all.filter(x => x.id !== b.id && x.status === "success").map(x => `<option value="${esc(x.id)}">Comparar con: compilación #${x.number}</option>`).join("")}</select><button class="btn sm" data-cmp="${esc(b.id)}">Comparar</button></div>
+   <div data-cmpres="${esc(b.id)}"></div>` : ""}
   ${b.log ? `<details style="margin-top:10px"><summary class="perm">Ver registro</summary><pre class="perm" style="white-space:pre-wrap">${esc(b.log)}</pre></details>` : ""}</div>`;
 }
 
@@ -379,7 +459,8 @@ async function drawBuilds(el) {
    <p class="sub" style="margin-bottom:12px">Se aplican tus <b>${n}</b> cambio(s) de texto/imagen${m ? ` y <b>${m}</b> de Apktool (propiedades y XML)` : ""} al APK original, se alinea y se firma con la clave de este servidor.${m ? " Al haber cambios de Apktool, el APK se reconstruye con Apktool: puede tardar más y fallar en algunas apps." : ""}</p>
    <button class="btn primary" id="build" ${busy ? "disabled" : ""}>${busy ? "Compilando…" : "🔨 Reconstruir y firmar APK"}</button></div>
    <div class="note" style="margin-bottom:16px">La firma será <b>distinta a la del APK original</b>: para instalarlo normalmente debes desinstalar antes la app original (se borran sus datos) y no se actualizará sobre ella. "Compilada" no significa "probada": instálala en un teléfono para comprobar que funciona.</div>
-   ${list.length ? list.map(buildCard).join("") : '<div class="card">Aún no hay compilaciones.</div>'}`;
+   ${list.length ? list.map(b => buildCard(b, list)).join("") : '<div class="card">Aún no hay compilaciones.</div>'}
+   ${list.length ? '<p class="perm">Se conservan las últimas compilaciones y la marcada como publicada; las más antiguas se borran solas.</p>' : ""}`;
   $("#build").onclick = async () => {
     try { await api(`/api/projects/${CUR.id}/builds`, { method: "POST" }); toast("Compilación iniciada"); drawBuilds($("#tab")); }
     catch (e) { toast(e.message, "err"); }
@@ -391,6 +472,19 @@ async function drawBuilds(el) {
       if (d.copy) { try { await navigator.clipboard.writeText(d.copy); toast("Enlace copiado"); } catch { prompt("Copia el enlace:", d.copy); } }
       else if (d.revoke) { if (!confirm("¿Revocar el enlace? Dejará de funcionar.")) return; await api(`/api/projects/${CUR.id}/builds/${d.revoke}/link`, { method: "DELETE" }); toast("Enlace revocado"); drawBuilds(el); }
       else if (d.newlink) { await api(`/api/projects/${CUR.id}/builds/${d.newlink}/link`, { method: "POST" }); toast("Enlace nuevo generado"); drawBuilds(el); }
+      else if (d.note) {
+        await api(`/api/projects/${CUR.id}/builds/${d.note}`, { method: "PATCH", headers: jsonHdr, body: JSON.stringify({ note: el.querySelector(`[data-noteinput="${d.note}"]`).value }) });
+        toast("Nota guardada");
+      }
+      else if (d.pub) {
+        await api(`/api/projects/${CUR.id}/builds/${d.pub}`, { method: "PATCH", headers: jsonHdr, body: JSON.stringify({ published: d.on === "1" }) });
+        toast(d.on === "1" ? "Marcada como publicada" : "Ya no está marcada como publicada"); drawBuilds(el);
+      }
+      else if (d.cmp) {
+        const w = el.querySelector(`[data-with="${d.cmp}"]`).value;
+        const r = await api(`/api/projects/${CUR.id}/builds/${d.cmp}/compare?with=${enc(w)}`);
+        el.querySelector(`[data-cmpres="${d.cmp}"]`).innerHTML = renderCompare(r);
+      }
       else if (d.delb) { if (!confirm("¿Eliminar esta compilación y su archivo?")) return; await api(`/api/projects/${CUR.id}/builds/${d.delb}`, { method: "DELETE" }); toast("Compilación eliminada"); drawBuilds(el); }
     } catch (e) { toast(e.message, "err"); }
   };
@@ -665,7 +759,8 @@ async function openTextEditor(path, where = "apk") {
 
 /* ---------- Editor de imágenes e iconos ---------- */
 const loadImg = url => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error("No se pudo cargar la imagen.")); i.src = url; });
-const rawUrl = (p, v) => `${pbase(CUR.id)}/raw?path=${enc(p)}&version=${v}&t=${Date.now()}`;
+const rawPath = (p, v) => `/api/projects/${enc(CUR.id)}/raw?path=${enc(p)}&version=${v}&t=${Date.now()}`;
+const loadRaw = (p, v) => authBlobUrl(rawPath(p, v)).then(loadImg);
 const MIME = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
 
 function renderImage(src, W, H, fit, e, quality) {
@@ -713,9 +808,9 @@ async function openImageEditor(path) {
   q("#bClose").onclick = () => ov.close();
 
   let W = 0, H = 0, src = null, last = null;
-  loadImg(rawUrl(path, "original")).then(im => { W = im.naturalWidth; H = im.naturalHeight; q("#dim").textContent = W + " × " + H + " px"; q("#io").src = im.src; })
+  loadRaw(path, "original").then(im => { W = im.naturalWidth; H = im.naturalHeight; q("#dim").textContent = W + " × " + H + " px"; q("#io").src = im.src; })
     .catch(x => toast(x.message, "err"));
-  const showCurrent = () => { const on = modified(); q("#curBox").hidden = !on; if (on) q("#ic").src = rawUrl(path, "current"); };
+  const showCurrent = () => { const on = modified(); q("#curBox").hidden = !on; if (on) authBlobUrl(rawPath(path, "current")).then(u => { q("#ic").src = u; }).catch(() => {}); };
   showCurrent();
 
   if (e !== "gif") {
@@ -746,7 +841,7 @@ async function openImageEditor(path) {
           q("#msg").textContent = `Aplicando ${i + 1}/${targets.length}…`;
           let blob = last.blob;
           if (targets[i] !== path) {
-            const o = await loadImg(rawUrl(targets[i], "original"));
+            const o = await loadRaw(targets[i], "original");
             const r = await renderImage(src, o.naturalWidth, o.naturalHeight, q("#fit").value, extOf(targets[i]), quality());
             if (!r.blob) throw new Error("No se pudo generar " + targets[i]);
             blob = r.blob;
@@ -804,7 +899,12 @@ async function runDiag() {
     h.apktool ? add("ok", "Apktool (propiedades y XML)", "apktool y aapt2 disponibles")
               : add("warn", "Apktool (propiedades y XML)", "Falta: " + ((h.apktoolMissing || []).join(", ") || "configuración"), "Despliega con el Dockerfile nuevo. Sin esto no funciona la pestaña Propiedades.");
     add("ok", "Límite de subida", (h.maxMb || "?") + " MB");
-    try { const r = await fetch(base + "/api/projects"); r.ok ? add("ok", "API de proyectos", "HTTP 200") : add("bad", "API de proyectos", "HTTP " + r.status, "Mira los logs del backend."); }
+    try {
+      const r = await fetch(base + "/api/projects", { headers: getToken() ? { Authorization: "Bearer " + getToken() } : {} });
+      r.ok ? add("ok", "API de proyectos", "HTTP 200")
+        : r.status === 401 ? add("warn", "API de proyectos", "Responde, pero hace falta iniciar sesión.", "Entra con tu cuenta (menú → Iniciar sesión).")
+        : add("bad", "API de proyectos", "HTTP " + r.status, "Mira los logs del backend.");
+    }
     catch (e) { add("bad", "API de proyectos", e.message); }
   }
   return out;
@@ -834,6 +934,29 @@ function viewDiag() {
   drawLog(); run();
 }
 
+async function viewAdmin() {
+  view.innerHTML = '<h1>Administración</h1><p class="sub">Cuentas de este servidor. Eliminar una cuenta borra también sus proyectos y archivos.</p><div id="ulist">Cargando…</div>';
+  let rows;
+  try { rows = await api("/api/admin/users"); }
+  catch (e) { $("#ulist").innerHTML = `<div class="card" style="color:var(--err)">${esc(e.message)}</div>`; return; }
+  const me = localStorage.getItem("kendy_user");
+  $("#ulist").innerHTML = rows.map(u => `<div class="card"><b style="word-break:break-all">${esc(u.email)}</b> <span class="tag">${esc(u.role)}</span>
+    <div class="perm">${u.projects} proyecto(s) · ${fmt(u.storage)} · alta ${esc(fmtDate(u.created_at))}</div>
+    ${u.email === me ? '<div class="perm" style="margin-top:8px">Esta es tu cuenta.</div>'
+      : `<div class="row" style="margin-top:10px"><button class="btn sm" data-role="${esc(u.id)}" data-to="${u.role === "admin" ? "user" : "admin"}">${u.role === "admin" ? "Quitar admin" : "Hacer admin"}</button><button class="btn sm danger" data-deluser="${esc(u.id)}" data-email="${esc(u.email)}">Eliminar cuenta</button></div>`}</div>`).join("");
+  $("#ulist").onclick = async ev => {
+    const t = ev.target.closest("button"); if (!t) return;
+    const d = t.dataset;
+    try {
+      if (d.role) { await api(`/api/admin/users/${d.role}`, { method: "PATCH", headers: jsonHdr, body: JSON.stringify({ role: d.to }) }); toast("Rol actualizado"); viewAdmin(); }
+      else if (d.deluser) {
+        if (!confirm(`¿Eliminar la cuenta ${d.email}? Se borrarán sus proyectos y archivos. No se puede deshacer.`)) return;
+        await api(`/api/admin/users/${d.deluser}`, { method: "DELETE" }); toast("Cuenta eliminada"); viewAdmin();
+      }
+    } catch (e) { toast(e.message, "err"); }
+  };
+}
+
 function viewSettings() {
   view.innerHTML = `<h1>Configuración</h1><p class="sub">Si el backend está en otro dominio, indica su URL (debe permitir CORS). Déjalo vacío si esta página la sirve el propio backend.</p>
   <div class="card"><label for="api">URL del servidor</label><input type="text" id="api" placeholder="https://api.tudominio.com" value="${esc(apiBase()).replace("—", "")}">
@@ -847,9 +970,11 @@ function viewSettings() {
 function route() {
   stopPoll();
   const [, r, arg] = (location.hash || "#/home").split("/");
+  renderWho();
+  if (!getToken() && !["login", "settings", "diag"].includes(r)) { location.hash = "#/login"; return; }
   $("#side").classList.remove("open");
   document.querySelectorAll(".nav[data-r]").forEach(a => a.classList.toggle("active", a.dataset.r === (r === "project" ? "projects" : r)));
-  ({ home: viewHome, import: viewImport, projects: viewProjects, settings: viewSettings, diag: viewDiag }[r] || (r === "project" ? () => viewProject(arg) : viewHome))();
+  ({ home: viewHome, import: viewImport, projects: viewProjects, settings: viewSettings, diag: viewDiag, login: viewLogin, admin: viewAdmin }[r] || (r === "project" ? () => viewProject(arg) : viewHome))();
 }
 $("#burger").onclick = () => $("#side").classList.toggle("open");
 addEventListener("hashchange", route); route();
