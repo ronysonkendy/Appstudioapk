@@ -14,6 +14,8 @@ import { projectRoutes } from "./routes/projects.js";
 import { fileRoutes } from "./routes/files.js";
 import { buildRoutes, recoverBuilds } from "./routes/builds.js";
 import { decodedRoutes, recoverDecodes } from "./routes/decoded.js";
+import { authRoutes } from "./routes/auth.js";
+import { authenticate } from "./services/auth.js";
 import { signingConfigured } from "./services/signing.js";
 import { ZipError } from "./services/zipSafe.js";
 
@@ -30,6 +32,19 @@ app.setErrorHandler((e: any, req, reply) => {
       message: status === 500 ? "Error interno del servidor." : e.message,
     },
   });
+});
+
+app.decorateRequest("userId", "");
+app.decorateRequest("userRole", "");
+// Todo lo de /api exige sesión, salvo el login/registro y las descargas por enlace (el enlace es el secreto).
+app.addHook("onRequest", async (req, reply) => {
+  const url = req.url.split("?")[0];
+  if (req.method === "OPTIONS" || !url.startsWith("/api/")) return;
+  if (url.startsWith("/api/auth/") || url.startsWith("/api/download/")) return;
+  const u = await authenticate(req.headers.authorization);
+  if (!u) return reply.code(401).send({ error: { code: "UNAUTHORIZED", message: "Inicia sesión para continuar." } });
+  req.userId = u.id;
+  req.userRole = u.role;
 });
 
 await app.register(rateLimit, { max: 240, timeWindow: "1 minute" });
@@ -84,6 +99,7 @@ app.get("/health", async () => {
   r.apktoolMissing = t.apktoolMissing;
   return r;
 });
+await app.register(authRoutes);
 await app.register(projectRoutes);
 await app.register(fileRoutes);
 await app.register(buildRoutes);
