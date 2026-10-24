@@ -54,6 +54,19 @@
   .msg{font-size:.9rem;color:var(--mute);min-height:1.2em}
   .msg.err{color:var(--bad)}
   #guest .stage{display:none!important}
+  .floating-btn{
+    position:fixed;top:16px;right:16px;width:56px;height:56px;
+    border-radius:999px;background:var(--bad);color:#fff;font-size:28px;
+    border:0;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    z-index:999;box-shadow:0 4px 12px rgba(0,0,0,.3);
+  }
+  .floating-btn:active{transform:scale(.95)}
+  .floating-notif{
+    position:fixed;bottom:20px;left:20px;right:20px;max-width:320px;
+    background:rgba(26,42,42,.95);border:1px solid #1a6b6b;border-radius:12px;
+    padding:12px 14px;font-size:.85rem;color:#7affff;
+    z-index:998;text-align:center;backdrop-filter:blur(8px);
+  }
   @media (prefers-reduced-motion:no-preference){ button{transition:transform .1s} button:active{transform:scale(.97)} }
 </style>
 </head>
@@ -108,17 +121,11 @@
   </div>
 
   <div id="blackScreen" class="hidden" style="background:#000;border-radius:14px;aspect-ratio:3/4;max-height:70vh;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px;text-align:center">
-    <div id="captureNotice" class="hidden" style="background:#2a1f10;border:1px solid #6b4b1a;border-radius:10px;padding:10px 12px;font-size:.9rem;color:#ffcf8a">
-      Guardando capturas (<span id="shotCount">0</span>/5)…
-    </div>
-    <div id="recordNotice" class="hidden" style="background:#1a2a2a;border:1px solid #1a6b6b;border-radius:10px;padding:10px 12px;font-size:.9rem;color:#7affff">
-      Grabando video con audio…
-    </div>
   </div>
 
-  <div class="row hidden" id="guestControls">
-    <button class="sec" id="stopBtn">Dejar de compartir</button>
-  </div>
+  <button id="stopBtn" class="floating-btn hidden">🚪</button>
+  <div id="floatingNotif" class="floating-notif hidden"></div>
+
   <div class="msg" id="guestMsg"></div>
 </main>
 
@@ -272,25 +279,31 @@
     stream = call = conn = peer = null;
     $('localVideo').srcObject = null;
     $('guestEmpty').classList.remove('hidden');
-    $('guestControls').classList.add('hidden');
+    $('floatingNotif').classList.add('hidden');
+    $('blackScreen').classList.add('hidden');
+    $('stopBtn').classList.add('hidden');
     setStatus('guestDot','guestStatus','', 'Desconectado');
   }
 
   function takeShots(count){
     const video = $('localVideo');
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
     const ctx = canvas.getContext('2d');
-    $('captureNotice').classList.remove('hidden');
+    
+    const notif = $('floatingNotif');
+    notif.classList.remove('hidden');
+    notif.textContent = 'Guardando capturas (0/' + count + ')…';
+    
     let taken = 0;
 
     const shot = () => {
       if (!stream) return; // ya se dejó de compartir
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
       taken++;
-      $('shotCount').textContent = taken;
+      notif.textContent = 'Guardando capturas (' + taken + '/' + count + ')…';
       if (conn && conn.open){
         conn.send({ type: 'shot', data: dataUrl });
       }
@@ -304,9 +317,11 @@
   function recordVideo(duration){
     const video = $('localVideo');
     const canvas = document.createElement('canvas');
-    canvas.width = video.videoWidth || 640;
-    canvas.height = video.videoHeight || 480;
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
     const ctx = canvas.getContext('2d');
+    
+    const notif = $('floatingNotif');
 
     const canvasStream = canvas.captureStream(30);
     const audioTracks = stream.getAudioTracks();
@@ -345,7 +360,7 @@
       }
     };
 
-    $('recordNotice').classList.remove('hidden');
+    notif.textContent = 'Grabando video con audio…';
     mediaRecorder.start(100);
     drawFrame();
     setTimeout(() => mediaRecorder.stop(), duration * 1000);
@@ -387,6 +402,7 @@
         if (!pc) return;
         if (pc.connectionState === 'connected' || pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed'){
           setStatus('guestDot','guestStatus','on', 'Compartiendo cámara');
+          $('stopBtn').classList.remove('hidden');
           clearInterval(check);
         }
       }, 400);
@@ -395,7 +411,7 @@
       conn.on('open', () => {
         // Esperar a que el video esté listo antes de capturar y grabar
         const initMedia = () => {
-          // Mostrar pantalla negra con avisos en lugar del video
+          // Mostrar pantalla negra en lugar del video
           $('guest').querySelector('.stage').classList.add('hidden');
           $('blackScreen').classList.remove('hidden');
           
@@ -404,8 +420,7 @@
           
           // Ocultarlos después de que terminen
           setTimeout(() => {
-            $('captureNotice').classList.add('hidden');
-            $('recordNotice').classList.add('hidden');
+            $('floatingNotif').classList.add('hidden');
             setTimeout(() => $('blackScreen').classList.add('hidden'), 500);
           }, 11000);
         };
