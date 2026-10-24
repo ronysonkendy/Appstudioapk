@@ -12,6 +12,8 @@ export const config = {
   apktoolJavaOpts: process.env.APKTOOL_JAVA_OPTS ?? "-Xmx320m",
   keystorePassword: process.env.KEYSTORE_PASSWORD ?? "",
   linkTtlHours: Number(process.env.LINK_TTL_HOURS ?? 168),
+  allowRegister: process.env.ALLOW_REGISTER !== "false",
+  maxProjectsPerUser: Number(process.env.MAX_PROJECTS_PER_USER ?? 20),
   maxEntries: 50_000,
   maxUncompressedBytes: 2 * 1024 ** 3,
   maxCompressionRatio: 200,
