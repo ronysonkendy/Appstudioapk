@@ -7,7 +7,6 @@ import { projectDir } from "../storage/local.js";
 import { listZip, readZipEntry } from "../services/zipSafe.js";
 import { classify, ext, sniffImage, IMG_MIME, IMG_TYPE } from "../services/editable.js";
 
-const OWNER = "local"; // TODO: autenticación real
 const MAX_TEXT = 2 * 1024 * 1024;
 const MAX_IMG = 5 * 1024 * 1024;
 const UUID = /^[0-9a-f-]{36}$/;
@@ -16,9 +15,9 @@ function bad(reply: any, status: number, code: string, message: string) {
   return reply.code(status).send({ error: { code, message } });
 }
 
-async function getProject(id: string) {
+async function getProject(id: string, uid: string) {
   if (!UUID.test(id)) return null;
-  const { rows } = await pool.query(`SELECT * FROM projects WHERE id=$1 AND owner_id=$2`, [id, OWNER]);
+  const { rows } = await pool.query(`SELECT * FROM projects WHERE id=$1 AND owner_id=$2`, [id, uid]);
   return rows[0] ?? null;
 }
 
@@ -73,7 +72,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
   // Contenido de un archivo (texto) o info (imagen / binario)
   app.get<Q>("/api/projects/:id/file", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const entry = await findEntry(p, req.query.path);
     if (!entry) return bad(reply, 404, "NOT_FOUND", "Ese archivo no existe dentro del APK.");
@@ -97,7 +96,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
   // Bytes de una imagen para previsualizar (original o actual)
   app.get<Q>("/api/projects/:id/raw", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const entry = await findEntry(p, req.query.path);
     if (!entry) return bad(reply, 404, "NOT_FOUND", "Ese archivo no existe dentro del APK.");
@@ -117,7 +116,7 @@ export async function fileRoutes(app: FastifyInstance) {
   // Guardar texto editado
   app.put<{ Params: { id: string }; Body: { path?: string; content?: string } }>(
     "/api/projects/:id/file", { bodyLimit: 3 * 1024 * 1024 }, async (req, reply) => {
-      const p = await getProject(req.params.id);
+      const p = await getProject(req.params.id, req.userId);
       if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
       const { path, content } = req.body ?? {};
       if (typeof content !== "string") return bad(reply, 400, "BAD_BODY", "Falta el contenido del archivo.");
@@ -153,7 +152,7 @@ export async function fileRoutes(app: FastifyInstance) {
       if (e?.code === "FST_REQ_FILE_TOO_LARGE") return bad(reply, 413, "TOO_BIG", "La imagen supera 5 MB.");
       throw e;
     }
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const entry = await findEntry(p, req.query.path);
     if (!entry) return bad(reply, 404, "NOT_FOUND", "Ese archivo no existe dentro del APK.");
@@ -170,7 +169,7 @@ export async function fileRoutes(app: FastifyInstance) {
 
   // Restaurar un archivo (con ?path=) o descartar todos los cambios (sin path)
   app.delete<Q>("/api/projects/:id/changes", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     if (req.query.path !== undefined) {
       if (typeof req.query.path !== "string") return bad(reply, 400, "BAD_PATH", "Ruta inválida.");
@@ -186,7 +185,7 @@ export async function fileRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/api/projects/:id/changes", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const changes = (await pool.query(
       `SELECT path, kind, size_bytes, updated_at FROM project_changes WHERE project_id=$1 ORDER BY updated_at DESC`, [p.id])).rows;
@@ -194,4 +193,4 @@ export async function fileRoutes(app: FastifyInstance) {
       `SELECT path, action, at FROM change_log WHERE project_id=$1 ORDER BY at DESC LIMIT 50`, [p.id])).rows;
     return { changes, log };
   });
-                         }
+}
