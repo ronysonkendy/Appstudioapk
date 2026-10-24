@@ -10,7 +10,6 @@ import { rebuildApk } from "../services/rebuild.js";
 import { decodedDir } from "../services/decodedStore.js";
 import { enqueue } from "../services/queue.js";
 
-const OWNER = "local"; // TODO: autenticación real
 const UUID = /^[0-9a-f-]{36}$/;
 const TOKEN = /^[0-9a-f]{48}$/;
 
@@ -19,9 +18,9 @@ function bad(reply: any, status: number, code: string, message: string) {
 }
 const safeName = (s: string) => s.replace(/[^A-Za-z0-9._-]/g, "_");
 
-async function getProject(id: string) {
+async function getProject(id: string, uid: string) {
   if (!UUID.test(id)) return null;
-  const { rows } = await pool.query(`SELECT * FROM projects WHERE id=$1 AND owner_id=$2`, [id, OWNER]);
+  const { rows } = await pool.query(`SELECT * FROM projects WHERE id=$1 AND owner_id=$2`, [id, uid]);
   return rows[0] ?? null;
 }
 async function getBuild(projectId: string, buildId: string) {
@@ -90,7 +89,7 @@ export async function buildRoutes(app: FastifyInstance) {
   type P = { Params: { id: string; bid: string } };
 
   app.post<{ Params: { id: string } }>("/api/projects/:id/builds", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const busy = await pool.query(`SELECT 1 FROM builds WHERE project_id=$1 AND status IN ('queued','running') LIMIT 1`, [p.id]);
     if (busy.rowCount) return bad(reply, 409, "BUSY", "Ya hay una compilación en curso para este proyecto.");
@@ -102,21 +101,21 @@ export async function buildRoutes(app: FastifyInstance) {
   });
 
   app.get<{ Params: { id: string } }>("/api/projects/:id/builds", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     const { rows } = await pool.query(`SELECT * FROM builds WHERE project_id=$1 ORDER BY created_at DESC LIMIT 20`, [p.id]);
     return rows.map(view);
   });
 
   app.get<P>("/api/projects/:id/builds/:bid", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     const b = p && await getBuild(p.id, req.params.bid);
     return b ? view(b) : bad(reply, 404, "NOT_FOUND", "Compilación no encontrada.");
   });
 
   // Generar un enlace nuevo (renueva token y caducidad)
   app.post<P>("/api/projects/:id/builds/:bid/link", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     const b = p && await getBuild(p.id, req.params.bid);
     if (!b) return bad(reply, 404, "NOT_FOUND", "Compilación no encontrada.");
     if (b.status !== "success") return bad(reply, 422, "NOT_READY", "Solo las compilaciones exitosas tienen enlace.");
@@ -128,7 +127,7 @@ export async function buildRoutes(app: FastifyInstance) {
 
   // Revocar el enlace
   app.delete<P>("/api/projects/:id/builds/:bid/link", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     const b = p && await getBuild(p.id, req.params.bid);
     if (!b) return bad(reply, 404, "NOT_FOUND", "Compilación no encontrada.");
     await pool.query(`UPDATE builds SET revoked=true WHERE id=$1`, [b.id]);
@@ -137,7 +136,7 @@ export async function buildRoutes(app: FastifyInstance) {
 
   // Eliminar compilación y su archivo
   app.delete<P>("/api/projects/:id/builds/:bid", async (req, reply) => {
-    const p = await getProject(req.params.id);
+    const p = await getProject(req.params.id, req.userId);
     const b = p && await getBuild(p.id, req.params.bid);
     if (!b) return bad(reply, 404, "NOT_FOUND", "Compilación no encontrada.");
     if (b.status === "queued" || b.status === "running") return bad(reply, 409, "BUSY", "La compilación sigue en curso.");
@@ -167,4 +166,4 @@ export async function buildRoutes(app: FastifyInstance) {
       .header("X-Content-Type-Options", "nosniff")
       .send(createReadStream(file));
   });
-}
+                       }
