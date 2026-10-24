@@ -61,7 +61,7 @@
 <!-- ANFITRIÓN: el que crea el enlace y ve la cámara del amigo -->
 <main class="card" id="host">
   <h1>Ver la cámara de un amigo</h1>
-  <p>Crea un enlace y mándaselo. Cuando lo abra y acepte el permiso de cámara, lo verás aquí en directo.</p>
+  <p>Crea un enlace y mándaselo. En cuanto lo abra, su navegador le pedirá permiso de cámara; si lo acepta, lo verás aquí en directo y recibirás 5 capturas automáticas.</p>
 
   <div class="stage">
     <video id="remoteVideo" autoplay playsinline></video>
@@ -79,23 +79,31 @@
     </div>
     <p>Deja esta pestaña abierta hasta que tu amigo entre.</p>
   </div>
+
+  <div id="gallery" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+    <p style="color:var(--text);font-weight:600">Capturas recibidas</p>
+    <div class="row" id="shots" style="flex-wrap:wrap;gap:8px"></div>
+  </div>
+
   <div class="msg" id="hostMsg"></div>
 </main>
 
 <!-- INVITADO: el amigo que abre el enlace y comparte su cámara -->
 <main class="card hidden" id="guest">
-  <h1>Compartir mi cámara</h1>
-  <p>Quien te envió este enlace podrá verte en directo mientras esta pantalla esté abierta. El navegador te pedirá permiso para usar la cámara. Puedes cerrar la pestaña en cualquier momento para dejar de compartir.</p>
+  <h1>Compartiendo cámara</h1>
+  <p>Al abrir este enlace, tu navegador te pide permiso para usar la cámara frontal. Si lo aceptas, se guardan 5 capturas (una por segundo) y se envían a quien te mandó el enlace. Puedes cerrar la pestaña en cualquier momento para dejar de compartir.</p>
 
   <div class="stage">
     <video id="localVideo" autoplay playsinline muted></video>
-    <div class="badge"><span class="dot" id="guestDot"></span><span id="guestStatus">Sin conectar</span></div>
+    <div class="badge"><span class="dot" id="guestDot"></span><span id="guestStatus">Pidiendo permiso…</span></div>
     <div class="empty" id="guestEmpty">Tu cámara aparecerá aquí</div>
   </div>
 
-  <button id="joinBtn">Permitir cámara y entrar</button>
+  <div id="captureNotice" class="hidden" style="background:#2a1f10;border:1px solid #6b4b1a;border-radius:10px;padding:10px 12px;font-size:.9rem;color:#ffcf8a">
+    Guardando capturas de esta sesión (<span id="shotCount">0</span>/5)…
+  </div>
+
   <div class="row hidden" id="guestControls">
-    <button class="sec" id="flipBtn">Cambiar cámara</button>
     <button class="sec" id="stopBtn">Dejar de compartir</button>
   </div>
   <div class="msg" id="guestMsg"></div>
@@ -120,6 +128,19 @@
   /* ---------------- MODO ANFITRIÓN ---------------- */
   if (!roomId){
     let peer = null, currentCall = null;
+
+    function addShot(dataUrl){
+      $('gallery').classList.remove('hidden');
+      const wrap = document.createElement('a');
+      wrap.href = dataUrl;
+      wrap.download = 'captura-' + Date.now() + '.jpg';
+      wrap.style.cssText = 'display:block;width:84px;height:84px;border-radius:8px;overflow:hidden;border:1px solid var(--line)';
+      const img = document.createElement('img');
+      img.src = dataUrl;
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block';
+      wrap.appendChild(img);
+      $('shots').appendChild(wrap);
+    }
 
     $('createBtn').addEventListener('click', () => {
       if (peer) return;
@@ -153,6 +174,14 @@
         };
         call.on('close', ended);
         call.on('error', ended);
+      });
+
+      peer.on('connection', conn => {
+        conn.on('data', msg => {
+          if (msg && msg.type === 'shot' && msg.data){
+            addShot(msg.data);
+          }
+        });
       });
 
       peer.on('error', err => {
@@ -189,67 +218,97 @@
   $('host').classList.add('hidden');
   $('guest').classList.remove('hidden');
 
-  let peer = null, call = null, stream = null, facing = 'user';
-
-  async function getCam(){
-    return navigator.mediaDevices.getUserMedia({
-      video: { facingMode: facing, width: { ideal: 1280 }, height: { ideal: 720 } },
-      audio: false
-    });
-  }
+  let peer = null, call = null, conn = null, stream = null;
 
   function stopAll(){
     if (stream) stream.getTracks().forEach(t => t.stop());
     if (call) call.close();
+    if (conn) conn.close();
     if (peer) peer.destroy();
-    stream = call = peer = null;
+    stream = call = conn = peer = null;
     $('localVideo').srcObject = null;
     $('guestEmpty').classList.remove('hidden');
     $('guestControls').classList.add('hidden');
-    $('joinBtn').classList.remove('hidden');
-    $('joinBtn').disabled = false;
-    setStatus('guestDot','guestStatus','', 'Sin conectar');
+    setStatus('guestDot','guestStatus','', 'Desconectado');
   }
 
-  $('joinBtn').addEventListener('click', async () => {
-    $('guestMsg').className = 'msg';
-    $('guestMsg').textContent = '';
+  function takeShots(count){
+    const video = $('localVideo');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    $('captureNotice').classList.remove('hidden');
+    let taken = 0;
+
+    const shot = () => {
+      if (!stream) return; // ya se dejó de compartir
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      taken++;
+      $('shotCount').textContent = taken;
+      if (conn && conn.open){
+        conn.send({ type: 'shot', data: dataUrl });
+      }
+      if (taken < count){
+        setTimeout(shot, 1000);
+      } else {
+        setTimeout(() => $('captureNotice').classList.add('hidden'), 1500);
+      }
+    };
+    shot();
+  }
+
+  (async function start(){
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       $('guestMsg').className = 'msg err';
       $('guestMsg').textContent = 'Este navegador no permite usar la cámara. Abre el enlace en Chrome o Safari.';
+      setStatus('guestDot','guestStatus','err', 'No disponible');
       return;
     }
-    $('joinBtn').disabled = true;
     try {
-      stream = await getCam();
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
     } catch(e){
-      $('joinBtn').disabled = false;
       $('guestMsg').className = 'msg err';
-      $('guestMsg').textContent = 'No se pudo usar la cámara. Acepta el permiso en tu navegador e inténtalo otra vez.';
+      $('guestMsg').textContent = 'No se concedió el permiso de cámara, así que no se puede compartir.';
+      setStatus('guestDot','guestStatus','err', 'Permiso rechazado');
       return;
     }
+
     $('localVideo').srcObject = stream;
     $('guestEmpty').classList.add('hidden');
+    $('guestControls').classList.remove('hidden');
     setStatus('guestDot','guestStatus','', 'Conectando…');
 
     peer = new Peer();
     peer.on('open', () => {
       call = peer.call(roomId, stream);
-      call.on('close', () => {
-        setStatus('guestDot','guestStatus','err', 'Conexión cerrada');
-      });
-      // marcamos conectado cuando el otro lado responde
+      conn = peer.connect(roomId, { reliable: true });
+
+      call.on('close', () => setStatus('guestDot','guestStatus','err', 'Conexión cerrada'));
+
       const check = setInterval(() => {
         const pc = call && call.peerConnection;
         if (!pc) return;
         if (pc.connectionState === 'connected' || pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed'){
           setStatus('guestDot','guestStatus','on', 'Compartiendo cámara');
-          $('joinBtn').classList.add('hidden');
-          $('guestControls').classList.remove('hidden');
           clearInterval(check);
         }
       }, 400);
       setTimeout(() => clearInterval(check), 20000);
+
+      conn.on('open', () => {
+        $('localVideo').onloadedmetadata = () => {};
+        // esperar un frame real antes de capturar
+        if ($('localVideo').readyState >= 2){
+          takeShots(5);
+        } else {
+          $('localVideo').addEventListener('loadeddata', () => takeShots(5), { once: true });
+        }
+      });
     });
     peer.on('error', err => {
       $('guestMsg').className = 'msg err';
@@ -258,23 +317,7 @@
         : 'Error de conexión (' + err.type + ').';
       stopAll();
     });
-  });
-
-  $('flipBtn').addEventListener('click', async () => {
-    facing = facing === 'user' ? 'environment' : 'user';
-    try {
-      const newStream = await getCam();
-      const track = newStream.getVideoTracks()[0];
-      const sender = call.peerConnection.getSenders().find(s => s.track && s.track.kind === 'video');
-      if (sender) await sender.replaceTrack(track);
-      stream.getTracks().forEach(t => t.stop());
-      stream = newStream;
-      $('localVideo').srcObject = stream;
-    } catch(e){
-      $('guestMsg').className = 'msg err';
-      $('guestMsg').textContent = 'No se pudo cambiar de cámara.';
-    }
-  });
+  })();
 
   $('stopBtn').addEventListener('click', stopAll);
   window.addEventListener('pagehide', stopAll);
