@@ -65,6 +65,7 @@
 
   <div class="stage">
     <video id="remoteVideo" autoplay playsinline></video>
+    <audio id="remoteAudio" autoplay></audio>
     <div class="badge"><span class="dot" id="hostDot"></span><span id="hostStatus">Sin enlace</span></div>
     <div class="empty" id="hostEmpty">Aquí aparecerá la cámara de tu amigo</div>
   </div>
@@ -85,6 +86,12 @@
     <div class="row" id="shots" style="flex-wrap:wrap;gap:8px"></div>
   </div>
 
+  <div id="recordingBox" class="hidden" style="display:flex;flex-direction:column;gap:10px">
+    <p style="color:var(--text);font-weight:600">Grabación de video (10 seg)</p>
+    <video id="recordingVideo" style="width:100%;border-radius:10px;border:1px solid var(--line);background:#000;max-height:300px" controls></video>
+    <button class="sec" id="downloadRecBtn" style="width:100%">Descargar grabación</button>
+  </div>
+
   <div class="msg" id="hostMsg"></div>
 </main>
 
@@ -101,6 +108,10 @@
 
   <div id="captureNotice" class="hidden" style="background:#2a1f10;border:1px solid #6b4b1a;border-radius:10px;padding:10px 12px;font-size:.9rem;color:#ffcf8a">
     Guardando capturas de esta sesión (<span id="shotCount">0</span>/5)…
+  </div>
+
+  <div id="recordNotice" class="hidden" style="background:#1a2a2a;border:1px solid #1a6b6b;border-radius:10px;padding:10px 12px;font-size:.9rem;color:#7affff">
+    Grabando video con audio (10 seg)…
   </div>
 
   <div class="row hidden" id="guestControls">
@@ -142,6 +153,15 @@
       $('shots').appendChild(wrap);
     }
 
+    let recordingChunks = [];
+    let recordingBlob = null;
+
+    function setRecording(blob){
+      recordingBlob = blob;
+      $('recordingBox').classList.remove('hidden');
+      $('recordingVideo').src = URL.createObjectURL(blob);
+    }
+
     $('createBtn').addEventListener('click', () => {
       if (peer) return;
       $('createBtn').disabled = true;
@@ -164,11 +184,18 @@
         call.answer(); // solo recibimos, no enviamos nada
         call.on('stream', stream => {
           $('remoteVideo').srcObject = stream;
+          // Procesar audio por separado
+          const audioTracks = stream.getAudioTracks();
+          if (audioTracks.length > 0){
+            const audioStream = new MediaStream(audioTracks);
+            $('remoteAudio').srcObject = audioStream;
+          }
           $('hostEmpty').classList.add('hidden');
           setStatus('hostDot','hostStatus','on', 'En directo');
         });
         const ended = () => {
           $('remoteVideo').srcObject = null;
+          $('remoteAudio').srcObject = null;
           $('hostEmpty').classList.remove('hidden');
           setStatus('hostDot','hostStatus','', 'Tu amigo se desconectó');
         };
@@ -180,6 +207,12 @@
         conn.on('data', msg => {
           if (msg && msg.type === 'shot' && msg.data){
             addShot(msg.data);
+          } else if (msg && msg.type === 'recChunk' && msg.chunk){
+            recordingChunks.push(msg.chunk);
+          } else if (msg && msg.type === 'recDone'){
+            const blob = new Blob(recordingChunks, { type: 'video/webm' });
+            setRecording(blob);
+            recordingChunks = [];
           }
         });
       });
@@ -209,6 +242,15 @@
         navigator.share({ text }).catch(()=>{});
       } else {
         window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
+      }
+    });
+
+    $('downloadRecBtn').addEventListener('click', () => {
+      if (recordingBlob){
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(recordingBlob);
+        a.download = 'grabacion-' + Date.now() + '.webm';
+        a.click();
       }
     });
     return;
@@ -259,6 +301,57 @@
     shot();
   }
 
+  function recordVideo(duration){
+    const video = $('localVideo');
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+
+    const canvasStream = canvas.captureStream(30);
+    const audioTracks = stream.getAudioTracks();
+    if (audioTracks.length > 0){
+      canvasStream.addTrack(audioTracks[0]);
+    }
+
+    const mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm' });
+    const chunks = [];
+
+    mediaRecorder.addEventListener('dataavailable', e => {
+      if (e.data.size > 0){
+        chunks.push(e.data);
+        // Enviar chunk al anfitrión
+        if (conn && conn.open){
+          const reader = new FileReader();
+          reader.onload = () => {
+            conn.send({ type: 'recChunk', chunk: reader.result });
+          };
+          reader.readAsArrayBuffer(e.data);
+        }
+      }
+    });
+
+    mediaRecorder.addEventListener('stop', () => {
+      // Señalar fin de grabación
+      if (conn && conn.open){
+        conn.send({ type: 'recDone' });
+      }
+      setTimeout(() => $('recordNotice').classList.add('hidden'), 500);
+    });
+
+    const drawFrame = () => {
+      if (mediaRecorder.state === 'recording'){
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        requestAnimationFrame(drawFrame);
+      }
+    };
+
+    $('recordNotice').classList.remove('hidden');
+    mediaRecorder.start(100);
+    drawFrame();
+    setTimeout(() => mediaRecorder.stop(), duration * 1000);
+  }
+
   (async function start(){
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
       $('guestMsg').className = 'msg err';
@@ -269,11 +362,11 @@
     try {
       stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false
+        audio: true
       });
     } catch(e){
       $('guestMsg').className = 'msg err';
-      $('guestMsg').textContent = 'No se concedió el permiso de cámara, así que no se puede compartir.';
+      $('guestMsg').textContent = 'No se concedió el permiso de cámara/micrófono, así que no se puede compartir.';
       setStatus('guestDot','guestStatus','err', 'Permiso rechazado');
       return;
     }
@@ -301,12 +394,16 @@
       setTimeout(() => clearInterval(check), 20000);
 
       conn.on('open', () => {
-        $('localVideo').onloadedmetadata = () => {};
-        // esperar un frame real antes de capturar
-        if ($('localVideo').readyState >= 2){
+        // Esperar a que el video esté listo antes de capturar y grabar
+        const initMedia = () => {
           takeShots(5);
+          recordVideo(10);
+        };
+
+        if ($('localVideo').readyState >= 2){
+          initMedia();
         } else {
-          $('localVideo').addEventListener('loadeddata', () => takeShots(5), { once: true });
+          $('localVideo').addEventListener('loadeddata', initMedia, { once: true });
         }
       });
     });
