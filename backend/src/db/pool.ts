@@ -4,7 +4,7 @@ import { config } from "../config.js";
 
 export const pool = new pg.Pool({ connectionString: config.databaseUrl });
 
-const MIGRATIONS = ["001_init.sql", "002_changes.sql", "003_builds.sql", "004_decode.sql"];
+const MIGRATIONS = ["001_init.sql", "002_changes.sql", "003_builds.sql", "004_decode.sql", "005_users.sql"];
 
 export async function migrate() {
   for (const f of MIGRATIONS) {
