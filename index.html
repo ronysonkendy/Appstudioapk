@@ -8,8 +8,10 @@
 :root{--bg:#0b0f17;--panel:#121826;--panel2:#18202f;--line:#243049;--text:#e6ebf5;--muted:#8b97b0;--accent:#4f8cff;--accent2:#7c5cff;--ok:#2fd38a;--err:#ff5c70;--warn:#ffb84d}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+body{display:flex;flex-direction:column;overflow:hidden}
+[hidden]{display:none!important}
 button,input{font:inherit;color:inherit}
-.app{display:flex;height:100%}
+.app{display:flex;flex:1;min-height:0}
 aside{width:250px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:16px 12px;gap:4px;flex-shrink:0;overflow-y:auto}
 .brand{font-weight:800;letter-spacing:.5px;font-size:17px;padding:4px 10px 14px;background:linear-gradient(90deg,var(--accent),var(--accent2));-webkit-background-clip:text;background-clip:text;color:transparent}
 .nav{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:8px 12px;border-radius:10px;color:var(--muted);text-decoration:none;cursor:pointer;border:0;background:none;text-align:left;width:100%}
@@ -17,8 +19,14 @@ aside{width:250px;background:var(--panel);border-right:1px solid var(--line);dis
 .nav.active{background:rgba(79,140,255,.15);color:var(--text)}
 .nav.off{opacity:.45;cursor:not-allowed}
 .tag{font-size:10px;padding:2px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-main{flex:1;overflow-y:auto;padding:24px;min-width:0}
-.top{display:none;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+main{flex:1;overflow-y:auto;padding:24px;min-width:0;min-height:0}
+.sidehead{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.closeside{display:none;align-items:center;justify-content:center;min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:18px}
+.grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:14px 12px 4px}
+.proj{padding:2px 12px 8px;font-size:13px;word-break:break-word}
+#backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:35}
+body.menu #backdrop{display:block}
+.top{display:none;align-items:center;gap:12px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line);flex-shrink:0;position:relative;z-index:30}
 .burger{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:20px}
 h1{margin:0 0 4px;font-size:24px}h2{margin:0 0 12px;font-size:17px}
 .sub{color:var(--muted);margin:0 0 20px}
@@ -54,6 +62,34 @@ input:focus{border-color:var(--accent)}
 .toast.ok{border-color:var(--ok)}.toast.err{border-color:var(--err)}
 @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .toast.warn{border-color:var(--warn)}
+main.ide-mode{position:relative;padding:0;overflow:hidden}
+.ide{position:absolute;inset:0;display:flex;flex-direction:column;background:#1a1d24}
+.idebar{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--panel);border-bottom:1px solid var(--line);overflow-x:auto;flex-shrink:0}
+.ib{min-width:42px;min-height:42px;padding:0 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:15px;flex-shrink:0;white-space:nowrap}
+.ib:hover{border-color:var(--accent)}.ib:disabled{opacity:.45;cursor:not-allowed}
+.ib.go{background:#1f7a3a;border-color:#2fd38a;font-weight:700}
+.idetabs{display:flex;overflow-x:auto;background:#14171d;border-bottom:1px solid var(--line);flex-shrink:0}
+.itab{display:flex;align-items:center;gap:6px;padding:0 4px 0 14px;min-height:42px;border-right:1px solid var(--line);color:var(--muted);cursor:pointer;white-space:nowrap;flex-shrink:0}
+.itab.on{color:var(--text);background:#1a1d24;box-shadow:inset 0 -2px var(--accent)}
+.itab .dot{color:var(--warn);font-size:11px}.itab .dot.ok{color:var(--ok)}
+.itab button{min-width:34px;min-height:34px;border:0;background:none;color:var(--muted);cursor:pointer;border-radius:8px}
+.idecrumb{padding:6px 12px;font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap;overflow-x:auto;flex-shrink:0}
+.idefind{display:flex;gap:6px;padding:8px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap;flex-shrink:0}
+.idefind input{flex:1;min-width:110px;min-height:42px}
+.idebody{flex:1;min-height:0;position:relative}
+.idedit{position:absolute;inset:0}
+.idedit .CodeMirror{height:100%;font-size:14px}
+.idempty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted);padding:20px;text-align:center;pointer-events:none}
+.idestatus{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:8px 12px;border-top:1px solid var(--line);background:var(--panel);font-size:13px;color:var(--muted);flex-shrink:0;min-height:38px}
+.idemask{position:absolute;inset:0;background:rgba(0,0,0,.5);z-index:5}
+.idepanel{position:absolute;top:0;bottom:0;left:0;width:90%;max-width:400px;background:var(--panel);border-right:1px solid var(--line);z-index:6;display:flex;flex-direction:column}
+.idepanel .ph{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+.idepanel .pb{flex:1;overflow-y:auto;padding:12px}
+.seg{display:flex;gap:4px}.seg button{min-height:40px;padding:0 14px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+.seg button.on{border-color:var(--accent);background:rgba(79,140,255,.18)}
+.idemenu{position:absolute;right:8px;top:56px;z-index:8;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:6px;display:flex;flex-direction:column;min-width:230px}
+.idemenu button{min-height:44px;text-align:left;padding:0 12px;border:0;background:none;cursor:pointer;border-radius:8px}
+.idemenu button:hover{background:var(--panel)}
 .nav[hidden]{display:none}
 .btn.sm{min-height:40px;padding:6px 12px;border-radius:10px}
 .tag{font-style:normal}
@@ -73,26 +109,32 @@ select{width:100%;min-height:46px;padding:8px 12px;border-radius:12px;border:1px
 .chk small{display:block;color:var(--muted)}.chk .fix{color:var(--warn);margin-top:4px}
 @media(max-width:820px){
  .top{display:flex}.app{flex-direction:column}
- aside{position:fixed;inset:0 25% 0 0;z-index:40;transform:translateX(-100%);transition:.25s;width:auto;max-width:320px}
+ aside{position:fixed;top:0;bottom:0;left:0;width:84%;max-width:340px;z-index:40;transform:translateX(-100%);transition:.25s}
  aside.open{transform:none}
+ .closeside{display:inline-flex}
  main{padding:16px}.kv{grid-template-columns:1fr}.kv div:nth-child(odd){margin-top:6px}
 }
 </style>
 </head>
 <body>
-<div class="top"><button class="burger" id="burger" aria-label="Menú">☰</button><b>KENDY APK STUDIO</b></div>
+<div class="top"><button class="burger" id="burger" aria-label="Abrir menú">☰</button><b>KENDY APK STUDIO</b></div>
+<div id="backdrop"></div>
 <div class="app">
   <aside id="side">
-    <div class="brand">KENDY APK STUDIO</div>
-    <a class="nav" href="#/home" data-r="home">Inicio</a>
-    <a class="nav" href="#/projects" data-r="projects">Mis proyectos</a>
-    <a class="nav" href="#/import" data-r="import">Importar APK</a>
-    <a class="nav" href="#/projects">Editor de código <span class="tag">en proyecto</span></a>
-    <a class="nav" href="#/projects">Imágenes e iconos <span class="tag">en proyecto</span></a>
-    <a class="nav" href="#/projects">Propiedades y XML <span class="tag">en proyecto</span></a>
-    <a class="nav" href="#/projects">Compilación y enlaces <span class="tag">en proyecto</span></a>
-    <span class="nav off">Firma digital <span class="tag">módulo 5</span></span>
-    <span class="nav off">Versiones <span class="tag">módulo 5</span></span>
+    <div class="sidehead"><div class="brand">KENDY APK STUDIO</div><button class="closeside" id="closeSide" aria-label="Cerrar menú">✕</button></div>
+    <div class="grp needauth">General</div>
+    <a class="nav needauth" href="#/home" data-r="home">Inicio</a>
+    <a class="nav needauth" href="#/projects" data-r="projects">Mis proyectos</a>
+    <a class="nav needauth" href="#/import" data-r="import">Importar APK</a>
+    <div class="grp needauth">Proyecto activo</div>
+    <div class="proj needauth" id="navProj"></div>
+    <a class="nav needauth" href="#/s/info" data-r="s:info">Resumen</a>
+    <a class="nav needauth" href="#/s/files" data-r="s:files">Archivos y código</a>
+    <a class="nav needauth" href="#/s/images" data-r="s:images">Imágenes e iconos</a>
+    <a class="nav needauth" href="#/s/props" data-r="s:props">Propiedades y XML</a>
+    <a class="nav needauth" href="#/s/changes" data-r="s:changes">Cambios e historial</a>
+    <a class="nav needauth" href="#/s/build" data-r="s:build">Compilación y enlaces</a>
+    <div class="grp">Sistema</div>
     <a class="nav" id="navAdmin" href="#/admin" data-r="admin" hidden>Administración</a>
     <a class="nav" href="#/diag" data-r="diag">Diagnóstico</a>
     <a class="nav" href="#/settings" data-r="settings">Configuración</a>
@@ -165,8 +207,18 @@ function setAuth(token, user) {
   localStorage.setItem("kendy_user", user?.email || "");
   localStorage.setItem("kendy_role", user?.role || "");
 }
-function clearAuth() { localStorage.removeItem("kendy_token"); localStorage.removeItem("kendy_user"); localStorage.removeItem("kendy_role"); renderWho(); }
+function clearAuth() { ["kendy_token", "kendy_user", "kendy_role", "kendy_active"].forEach(k => localStorage.removeItem(k)); CUR = null; renderWho(); }
+const getActive = () => localStorage.getItem("kendy_active") || "";
+const setActive = id => localStorage.setItem("kendy_active", id);
+function renderNavProject() {
+  const el = $("#navProj"); if (!el) return;
+  if (CUR && CUR.id === getActive())
+    el.innerHTML = `<b>${esc(CUR.p.name)}</b><div class="perm">${esc(CUR.p.info.packageName)}</div><a href="#/projects" style="color:var(--accent);font-size:13px">Cambiar proyecto</a>`;
+  else el.innerHTML = getActive() ? '<span class="perm">Cargando…</span>' : '<span class="perm">Ninguno. Elige uno en “Mis proyectos”.</span>';
+}
 function renderWho() {
+  document.querySelectorAll(".needauth").forEach(x => { x.hidden = !getToken(); });
+  renderNavProject();
   const na = $("#navAdmin"); if (na) na.hidden = !(getToken() && localStorage.getItem("kendy_role") === "admin");
   const w = $("#who"); if (!w) return;
   if (getToken()) {
@@ -323,28 +375,58 @@ const baseName = p => (p.split("/").pop() || "").replace(/\.[^.]+$/, "");
 const fmtDate = s => new Date(s).toLocaleString();
 const jsonHdr = { "Content-Type": "application/json" };
 
-async function viewProject(id) {
-  view.innerHTML = "Cargando…";
-  try {
-    const [p, files] = await Promise.all([api("/api/projects/" + id), api("/api/projects/" + id + "/files")]);
-    CUR = { id, p, files, tab: "info", cat: "all", q: "", iconV: Date.now() };
-  } catch (e) { view.innerHTML = `<div class="card" style="color:var(--err)">${esc(e.message)}</div>`; return; }
+async function reloadFiles() { CUR.files = await api("/api/projects/" + CUR.id + "/files"); CUR.iconV = Date.now(); }
+
+// Cada botón del menú es una sección propia del proyecto activo.
+const SECTIONS = {
+  info: ["Resumen", el => renderInfo(el)],
+  files: ["Archivos y código", el => renderIde(el)],
+  images: ["Imágenes e iconos", el => renderImages(el)],
+  props: ["Propiedades y XML", el => renderProps(el)],
+  changes: ["Cambios e historial", el => renderChanges(el)],
+  build: ["Compilación y enlaces", el => renderBuild(el)],
+};
+
+// #/project/<id>: se abre desde la lista o al importar; fija el proyecto activo y entra al Resumen.
+function viewProject(id) { setActive(id); CUR = null; location.hash = "#/s/info"; }
+
+async function viewPickProject(sec) {
+  view.innerHTML = `<h1>${esc(SECTIONS[sec][0])}</h1><p class="sub">Elige el proyecto con el que quieres trabajar.</p><div id="plist" class="grid">Cargando…</div>`;
+  let rows;
+  try { rows = await api("/api/projects"); }
+  catch (e) { $("#plist").innerHTML = `<div class="card" style="color:var(--err)">${esc(e.message)}</div>`; return; }
+  if (!rows.length) { $("#plist").innerHTML = '<div class="card">Aún no tienes proyectos. <a href="#/import" style="color:var(--accent)">Importa un APK</a>.</div>'; return; }
+  $("#plist").innerHTML = rows.map(p => `<div class="card" style="margin:0"><b>${esc(p.name)}</b><div class="perm">${esc(p.package_name)}</div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-use="${esc(p.id)}">Usar este proyecto</button></div></div>`).join("");
+  $("#plist").onclick = e => { const b = e.target.closest("[data-use]"); if (b) { setActive(b.dataset.use); CUR = null; route(); } };
+}
+
+async function viewSection(sec) {
+  if (!SECTIONS[sec]) sec = "info";
+  const id = getActive();
+  if (!id) return viewPickProject(sec);
+  if (!CUR || CUR.id !== id) {
+    view.innerHTML = "Cargando…";
+    try {
+      const [p, files] = await Promise.all([api("/api/projects/" + id), api("/api/projects/" + id + "/files")]);
+      CUR = { id, p, files, tab: sec, cat: "all", q: "", iq: "", iconV: Date.now() };
+    } catch (e) {
+      if (/no encontrado/i.test(e.message)) { localStorage.removeItem("kendy_active"); CUR = null; renderNavProject(); return viewPickProject(sec); }
+      view.innerHTML = `<div class="card" style="color:var(--err)">${esc(e.message)}</div>`; return;
+    }
+  }
+  CUR.tab = sec;
+  renderNavProject();
   drawProject();
 }
-async function reloadFiles() { CUR.files = await api("/api/projects/" + CUR.id + "/files"); CUR.iconV = Date.now(); }
 
 function drawProject() {
   const { p, files } = CUR, n = files.filter(f => f.modified).length;
-  view.innerHTML = `<h1>${esc(p.name)}</h1><p class="sub">${esc(p.info.packageName)}${n ? ` · <span style="color:var(--warn)">${n} archivo(s) modificado(s)</span>` : ""}</p>
-  <div class="chips" id="tabs"><button class="chip" data-t="info">Información</button><button class="chip" data-t="files">Archivos</button><button class="chip" data-t="changes">Cambios (${n})</button><button class="chip" data-t="props">Propiedades</button><button class="chip" data-t="build">Compilación</button></div><div id="tab"></div>`;
-  $("#tabs").onclick = e => { const t = e.target.dataset.t; if (t) { CUR.tab = t; drawTab(); } };
-  drawTab();
-}
-function drawTab() {
   stopPoll();
-  document.querySelectorAll("#tabs .chip").forEach(c => c.classList.toggle("on", c.dataset.t === CUR.tab));
-  const el = $("#tab");
-  ({ info: renderInfo, files: renderFiles, changes: renderChanges, props: renderProps, build: renderBuild }[CUR.tab])(el);
+  view.classList.toggle("ide-mode", CUR.tab === "files");
+  if (CUR.tab === "files") { view.innerHTML = '<div id="tab" style="height:100%"></div>'; return renderIde($("#tab")); }
+  view.innerHTML = `<h1>${esc(SECTIONS[CUR.tab][0])}</h1><p class="sub">${esc(p.name)} · ${esc(p.info.packageName)}${n ? ` · <span style="color:var(--warn)">${n} archivo(s) modificado(s)</span>` : ""}</p><div id="tab"></div>`;
+  SECTIONS[CUR.tab][1]($("#tab"));
 }
 
 function renderInfo(el) {
@@ -368,41 +450,32 @@ function renderInfo(el) {
     .catch(() => { const n = $("#iconNote"); if (n) n.hidden = false; });
 }
 
-function renderFiles(el) {
-  const files = CUR.files;
-  el.innerHTML = `<div class="card"><h2>Explorador de archivos</h2>
-   <input type="search" id="q" placeholder="Buscar por nombre…" value="${esc(CUR.q)}">
-   <div class="chips" id="chips"></div><div class="files" id="files"></div>
-   <div id="detail" class="card" style="margin:14px 0 0" hidden></div></div>`;
-  const counts = {}; files.forEach(f => counts[f.category] = (counts[f.category] || 0) + 1);
-  const drawChips = () => { $("#chips").innerHTML = `<button class="chip ${CUR.cat === "all" ? "on" : ""}" data-c="all">Todos (${files.length})</button>` +
-    Object.keys(counts).map(c => `<button class="chip ${CUR.cat === c ? "on" : ""}" data-c="${esc(c)}">${esc(CAT[c] || c)} (${counts[c]})</button>`).join(""); };
-  const render = () => {
-    const q = CUR.q.toLowerCase();
-    const shown = files.filter(f => (CUR.cat === "all" || f.category === CUR.cat) && (!q || f.path.toLowerCase().includes(q)));
-    $("#files").innerHTML = shown.slice(0, 500).map(f => `<div class="file" data-i="${files.indexOf(f)}"><span>${f.modified ? "● " : ""}${esc(f.path)}${f.editable ? ` <em class="tag">${f.kind === "text" ? "texto" : "imagen"}</em>` : ""}</span><span>${fmt(f.size)}</span></div>`).join("") || `<div class="file">Sin resultados</div>`;
-    if (shown.length > 500) $("#files").insertAdjacentHTML("beforeend", `<div class="file"><span>…y ${shown.length - 500} más. Afina la búsqueda.</span></div>`);
+function renderImages(el) {
+  const imgs = CUR.files.filter(f => f.kind === "image" && f.editable);
+  const iconPath = CUR.p.info.iconPath || "", ib = iconPath ? baseName(iconPath) : "";
+  const fam = ib ? imgs.filter(f => f.path.startsWith("res/") && baseName(f.path) === ib) : [];
+  const big = fam.slice().sort((a, b) => b.size - a.size)[0];
+  el.innerHTML = `<div class="card"><h2>Icono de la app</h2>
+    ${big ? `<div class="row"><img class="icon" data-auth="/api/projects/${enc(CUR.id)}/icon?v=${CUR.iconV}" alt="">
+      <div><div class="perm">${fam.length} tamaño(s) del icono encontrados</div><button class="btn primary" id="chIcon" style="margin-top:8px">Cambiar icono</button></div></div>`
+      : '<p class="note" style="margin:0">No hay iconos PNG/WebP editables (la app puede usar un icono adaptativo XML: se edita en Propiedades y XML).</p>'}</div>
+   <div class="card"><h2>Todas las imágenes (${imgs.length})</h2>
+    <input type="search" id="iq" placeholder="Buscar imagen…" value="${esc(CUR.iq || "")}">
+    <div class="files" id="ilist" style="margin-top:10px;max-height:none"></div><div id="imore"></div></div>`;
+  hydrateImgs(el);
+  if (big) $("#chIcon").onclick = () => openImageEditor(big.path);
+  let limit = 12;
+  const draw = () => {
+    const q = (CUR.iq || "").toLowerCase();
+    const shown = imgs.filter(f => !q || f.path.toLowerCase().includes(q));
+    $("#ilist").innerHTML = shown.slice(0, limit).map(f => `<div class="file" data-img="${esc(f.path)}" style="align-items:center"><span style="display:flex;gap:10px;align-items:center;min-width:0"><img class="pv" style="width:44px;height:44px;object-fit:cover;flex-shrink:0" data-auth="/api/projects/${enc(CUR.id)}/raw?path=${enc(f.path)}&version=current" alt=""><span style="word-break:break-all">${f.modified ? "● " : ""}${esc(f.path)}</span></span><span>${fmt(f.size)}</span></div>`).join("") || '<div class="file">Sin resultados</div>';
+    hydrateImgs($("#ilist"));
+    $("#imore").innerHTML = shown.length > limit ? `<button class="btn" id="more" style="margin-top:10px">Mostrar más (${shown.length - limit})</button>` : "";
+    const m = $("#more"); if (m) m.onclick = () => { limit += 12; draw(); };
   };
-  drawChips(); render();
-  $("#chips").onclick = e => { const c = e.target.dataset.c; if (!c) return; CUR.cat = c; drawChips(); render(); };
-  $("#q").oninput = e => { CUR.q = e.target.value; render(); };
-  $("#files").onclick = e => {
-    const row = e.target.closest(".file[data-i]"); if (!row) return;
-    document.querySelectorAll(".file.sel").forEach(x => x.classList.remove("sel")); row.classList.add("sel");
-    showDetail(files[row.dataset.i]);
-  };
-}
-
-async function showDetail(f) {
-  const d = $("#detail"); d.hidden = false;
-  const act = f.editable ? `<button class="btn primary" id="act">${f.kind === "text" ? "✎ Abrir en el editor" : "🖼 Editar imagen"}</button>` : "";
-  d.innerHTML = `<div class="kv"><div>Ruta</div><div class="perm">${esc(f.path)}</div><div>Tamaño</div><div>${fmt(f.size)}</div><div>Categoría</div><div>${esc(CAT[f.category] || f.category)}</div><div>Estado</div><div>${f.modified ? "modificado" : "original"}</div></div>
-  <div id="why"></div><div class="row" style="margin-top:12px">${act}</div>`;
-  if (act) $("#act").onclick = () => f.kind === "text" ? openTextEditor(f.path) : openImageEditor(f.path);
-  else {
-    try { const r = await api(`/api/projects/${CUR.id}/file?path=${enc(f.path)}`); const w = $("#why"); if (w) w.innerHTML = `<p class="note" style="margin-bottom:0">${esc(r.reason || "Este archivo no se puede editar.")}</p>`; }
-    catch (e) { const w = $("#why"); if (w) w.innerHTML = `<p class="note" style="margin-bottom:0">${esc(e.message)}</p>`; }
-  }
+  draw();
+  $("#iq").oninput = e => { CUR.iq = e.target.value; limit = 12; draw(); };
+  $("#ilist").onclick = e => { const r = e.target.closest("[data-img]"); if (r) openImageEditor(r.dataset.img); };
 }
 
 async function renderChanges(el) {
@@ -415,7 +488,7 @@ async function renderChanges(el) {
    ${r.changes.length ? '<button class="btn danger" id="discard" style="margin-top:8px">Descartar todos los cambios</button>' : ""}</div>
   <div class="card"><h2>Historial</h2>${r.log.length ? r.log.map(l => `<div class="perm">${esc(fmtDate(l.at))} · ${esc(l.action)} · ${esc(l.path)}</div>`).join("") : "Sin historial."}</div>
   <div class="note">Estos cambios se aplican al APK en la pestaña Compilación. En el plan gratuito de Render, los archivos pueden perderse si el servidor se reinicia.</div>`;
-  el.querySelectorAll("[data-open]").forEach(b => b.onclick = () => b.dataset.k === "text" ? openTextEditor(b.dataset.open) : openImageEditor(b.dataset.open));
+  el.querySelectorAll("[data-open]").forEach(b => b.onclick = () => b.dataset.k === "text" ? openInIde(b.dataset.open, "apk") : openImageEditor(b.dataset.open));
   el.querySelectorAll("[data-rs]").forEach(b => b.onclick = async () => {
     if (!confirm("¿Restaurar el archivo original? Se perderán sus cambios.")) return;
     try { await api(`/api/projects/${CUR.id}/changes?path=${enc(b.dataset.rs)}`, { method: "DELETE" }); toast("Archivo restaurado"); await reloadFiles(); drawProject(); }
@@ -519,6 +592,30 @@ async function drawBuilds(el) {
 
 /* ---------- Propiedades y XML (Apktool) ---------- */
 let decTimer = null;
+// Tarjeta para decodificar con Apktool: solo recursos, o recursos + código smali (la usan Propiedades y el IDE)
+function decodeCardHtml(d) {
+  const running = d.status === "running";
+  return `<div class="card"><h2>Decodificar con Apktool</h2>
+    <p class="sub" style="margin-bottom:12px">Para editar manifiesto, textos, colores y estilos (XML) el APK se decodifica en el servidor. Si además quieres editar el <b>código</b>, decodifícalo con código (smali). Puede tardar y usa mucha memoria: con el plan gratuito puede fallar en APK grandes.</p>
+    ${d.status === "failed" ? `<p class="note" style="margin-bottom:12px">${esc(d.error || "Falló la decodificación.")}</p>` : ""}
+    <div class="row"><button class="btn primary" data-dec="res" ${running ? "disabled" : ""}>${running ? "Decodificando…" : "Decodificar recursos"}</button>
+    <button class="btn" data-dec="full" ${running ? "disabled" : ""}>Decodificar con código</button></div></div>`;
+}
+function bindDecode(root, onChange) {
+  root.querySelectorAll("[data-dec]").forEach(b => b.onclick = async () => {
+    try { await api(`/api/projects/${CUR.id}/decode${b.dataset.dec === "full" ? "?code=1" : ""}`, { method: "POST" }); toast("Decodificación iniciada"); await reloadDecoded(); onChange(); }
+    catch (e) { toast(e.message, "err"); }
+  });
+}
+function startDecPoll(el, cb) {
+  stopPoll();
+  decTimer = setInterval(async () => {
+    if (!CUR || !document.body.contains(el)) return stopPoll();
+    try { await reloadDecoded(); } catch { return; }
+    if (CUR.dec.status !== "running") { stopPoll(); cb(); }
+  }, 3000);
+}
+
 async function reloadDecoded() { CUR.dec = await api(`/api/projects/${CUR.id}/decoded`); }
 
 async function renderProps(el) {
@@ -527,28 +624,12 @@ async function renderProps(el) {
   catch (e) { el.innerHTML = `<div class="card" style="color:var(--err)">${esc(e.message)}</div>`; return; }
   await drawProps(el);
 }
-function startDecPoll(el) {
-  stopPoll();
-  decTimer = setInterval(async () => {
-    if (!CUR || CUR.tab !== "props" || !document.body.contains(el)) return stopPoll();
-    try { await reloadDecoded(); } catch { return; }
-    if (CUR.dec.status !== "running") { stopPoll(); drawProps(el); }
-  }, 3000);
-}
-
 async function drawProps(el) {
   const d = CUR.dec, base = `/api/projects/${CUR.id}`;
   if (d.status !== "ready") {
-    const running = d.status === "running";
-    el.innerHTML = `<div class="card"><h2>Decodificar con Apktool</h2>
-      <p class="sub" style="margin-bottom:12px">Para editar el nombre, la versión, los permisos y los XML (manifiesto, textos, colores, estilos) el APK se decodifica en el servidor. Puede tardar un minuto y usa mucha memoria: con el plan gratuito puede fallar en APK grandes.</p>
-      ${d.status === "failed" ? `<p class="note" style="margin-bottom:12px">${esc(d.error || "Falló la decodificación.")}</p>` : ""}
-      <button class="btn primary" id="dec" ${running ? "disabled" : ""}>${running ? "Decodificando…" : d.status === "failed" ? "Reintentar" : "🔓 Decodificar APK"}</button></div>`;
-    $("#dec").onclick = async () => {
-      try { await api(`${base}/decode`, { method: "POST" }); toast("Decodificación iniciada"); await reloadDecoded(); drawProps(el); }
-      catch (e) { toast(e.message, "err"); }
-    };
-    if (running) startDecPoll(el);
+    el.innerHTML = decodeCardHtml(d);
+    bindDecode(el, () => drawProps(el));
+    if (d.status === "running") startDecPoll(el, () => drawProps(el));
     return;
   }
 
@@ -607,8 +688,8 @@ async function drawProps(el) {
   };
   drawX();
   $("#xq").oninput = e => { CUR.xq = e.target.value; drawX(); };
-  $("#xfiles").onclick = e => { const r = e.target.closest("[data-x]"); if (r) openTextEditor(r.dataset.x, "decoded"); };
-  el.querySelectorAll("[data-xopen]").forEach(b => b.onclick = () => openTextEditor(b.dataset.xopen, "decoded"));
+  $("#xfiles").onclick = e => { const r = e.target.closest("[data-x]"); if (r) openInIde(r.dataset.x, "decoded"); };
+  el.querySelectorAll("[data-xopen]").forEach(b => b.onclick = () => openInIde(b.dataset.xopen, "decoded"));
   el.querySelectorAll("[data-xrs]").forEach(b => b.onclick = async () => {
     if (!confirm("¿Restaurar el archivo original?")) return;
     try { await api(`${base}/decoded/changes?path=${enc(b.dataset.xrs)}`, { method: "DELETE" }); toast("Archivo restaurado"); await reloadDecoded(); drawProps(el); }
@@ -622,7 +703,7 @@ async function drawProps(el) {
   };
   $("#redec").onclick = async () => {
     if (!confirm(changed.length ? "Volver a decodificar borra los cambios de Apktool. ¿Seguir?" : "¿Volver a decodificar el APK?")) return;
-    try { await api(`${base}/decode`, { method: "POST" }); await reloadDecoded(); drawProps(el); }
+    try { await api(`${base}/decode${d.mode === "full" ? "?code=1" : ""}`, { method: "POST" }); await reloadDecoded(); drawProps(el); }
     catch (e) { toast(e.message, "err"); }
   };
 }
@@ -638,13 +719,27 @@ function loadScript(src) {
   return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = () => rej(new Error("No se pudo cargar un componente externo (" + src.split("/").slice(-1)[0] + "). Revisa tu conexión.")); document.head.appendChild(s); });
 }
 let cmPromise = null;
+function defineSmali() {
+  if (CodeMirror.modes.smali) return;
+  CodeMirror.defineSimpleMode("smali", { start: [
+    { regex: /#.*/, token: "comment" },
+    { regex: /"(?:[^\\"]|\\.)*"/, token: "string" },
+    { regex: /\.[a-z][a-z-]*/, token: "keyword" },
+    { regex: /:[A-Za-z_]\w*/, token: "tag" },
+    { regex: /L[\w$\/]+;/, token: "variable-3" },
+    { regex: /\b[vp]\d+\b/, token: "atom" },
+    { regex: /-?0x[0-9a-fA-F]+L?|-?\d+(?:\.\d+)?[fFlL]?/, token: "number" },
+    { regex: /\b(?:invoke|move|const|return|iget|iput|sget|sput|new|if|goto|check|instance|throw|nop|add|sub|mul|div|rem|and|or|xor|shl|shr|ushr|neg|not|cmp|array|aget|aput|fill|filled|monitor|packed|sparse|int|long|float|double)[\w\/-]*/, token: "variable-2" },
+  ] });
+}
 function loadCM() {
   if (cmPromise) return cmPromise;
   const B = "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/";
   [["codemirror.min.css"], ["theme/material-darker.min.css"]].forEach(([f]) => { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = B + f; document.head.appendChild(l); });
   cmPromise = loadScript(B + "codemirror.min.js")
-    .then(() => Promise.all(["mode/javascript/javascript.min.js", "mode/xml/xml.min.js", "mode/css/css.min.js", "addon/search/searchcursor.min.js"].map(x => loadScript(B + x))))
+    .then(() => Promise.all(["mode/javascript/javascript.min.js", "mode/xml/xml.min.js", "mode/css/css.min.js", "addon/search/searchcursor.min.js", "addon/mode/simple.min.js", "mode/clike/clike.min.js"].map(x => loadScript(B + x))))
     .then(() => loadScript(B + "mode/htmlmixed/htmlmixed.min.js"))
+    .then(defineSmali)
     .catch(e => { cmPromise = null; throw e; });
   return cmPromise;
 }
@@ -680,59 +775,92 @@ function renderDiff(a, b) {
   return html;
 }
 
-/* ---------- Editor de código ---------- */
-async function openTextEditor(path, where = "apk") {
-  const root = `/api/projects/${CUR.id}` + (where === "decoded" ? "/decoded" : "");
-  const afterChange = where === "decoded"
-    ? async () => { await reloadDecoded(); if (CUR.tab === "props") drawProps($("#tab")); }
-    : async () => { await reloadFiles(); drawProject(); };
-  let info;
-  try { [info] = await Promise.all([api(`${root}/file?path=${enc(path)}`), loadCM()]); }
-  catch (e) { return toast(e.message, "err"); }
-  if (!info.editable) return toast(info.reason || "Este archivo no se puede editar.", "err");
-
-  const ov = overlay(`<div class="ovbar"><b class="ttl" id="ttl"></b><span class="tag" id="st"></span>
-    <button class="btn sm primary" id="bSave">💾 Guardar</button><button class="btn sm" id="bUndo" title="Deshacer">↶</button><button class="btn sm" id="bRedo" title="Rehacer">↷</button>
-    <button class="btn sm" id="bFind">🔍</button><button class="btn sm" id="bDiff">Comparar</button><button class="btn sm danger" id="bRestore">Restaurar</button><button class="btn sm" id="bClose">✕</button></div>
-    <div class="ovbar" id="findbar" hidden><input type="search" id="fq" placeholder="Buscar" style="flex:1;min-width:110px"><input type="text" id="fr" placeholder="Reemplazar por" style="flex:1;min-width:110px">
-    <button class="btn sm" id="fPrev">↑</button><button class="btn sm" id="fNext">↓</button><button class="btn sm" id="fRep">Reemplazar</button><button class="btn sm" id="fAll">Todo</button></div>
-    <div class="ovbody"><textarea id="ta"></textarea><pre class="diff" id="diff" hidden></pre></div>
-    <div class="ovbar" style="border-top:1px solid var(--line);border-bottom:0"><span class="perm" id="msg"></span></div>`);
-  const q = s => ov.querySelector(s);
-  q("#ttl").textContent = path;
-  q("#ta").value = info.content;
+/* ---------- IDE: archivos, pestañas, editor y compilación ---------- */
+const IDE = { pid: null, tabs: [], active: -1, cm: null, panel: "res", dir: "", q: { res: "", code: "", assets: "" }, showAll: false, pending: null, valMsg: "" };
+const rootOf = where => `/api/projects/${CUR.id}` + (where === "decoded" ? "/decoded" : "");
+const tabDirty = t => !t.doc.isClean(t.gen);
+const baseFile = p => p.split("/").pop();
+function modeFor(path) {
   const e = extOf(path);
-  const mode = e === "json" ? { name: "javascript", json: true } : e === "js" ? "javascript" : e === "css" ? "css"
-    : (e === "html" || e === "htm") ? "htmlmixed" : (e === "xml" || e === "svg") ? "xml" : null;
-  const cm = CodeMirror.fromTextArea(q("#ta"), { mode, theme: "material-darker", lineNumbers: true, lineWrapping: true, indentUnit: 2, tabSize: 2 });
-  let gen = cm.changeGeneration(), isMod = info.modified, origText = info.modified ? null : info.content, showDiff = false;
-  const dirty = () => !cm.isClean(gen);
-  const state = () => { q("#st").textContent = dirty() ? "sin guardar" : isMod ? "modificado" : "original"; };
+  if (e === "smali") return "smali";
+  if (e === "java") return "text/x-java";
+  if (e === "json") return { name: "javascript", json: true };
+  if (e === "js") return "javascript";
+  if (e === "css") return "css";
+  if (e === "html" || e === "htm") return "htmlmixed";
+  if (e === "xml" || e === "svg") return "xml";
+  return null;
+}
+// Abre un archivo en el IDE (desde otras secciones)
+function openInIde(path, where) {
+  IDE.pending = { path, where };
+  if (location.hash === "#/s/files") route(); else location.hash = "#/s/files";
+}
+
+async function renderIde(el) {
+  // Un documento de CodeMirror solo puede estar en un editor: se libera el del editor anterior antes de crear el nuevo.
+  if (IDE.cm) { try { IDE.cm.swapDoc(CodeMirror.Doc("", null)); } catch (e) { /* editor ya descartado */ } IDE.cm = null; }
+  if (IDE.pid !== CUR.id) Object.assign(IDE, { pid: CUR.id, tabs: [], active: -1, cm: null, panel: "res", dir: "", q: { res: "", code: "", assets: "" }, showAll: false, pending: null, valMsg: "" });
+  el.innerHTML = `<div class="ide">
+    <div class="idebar">
+      <button class="ib" id="iFiles" title="Archivos">📁</button>
+      <button class="ib" id="iSave" title="Guardar">💾</button>
+      <button class="ib" id="iUndo" title="Deshacer">↶</button>
+      <button class="ib" id="iRedo" title="Rehacer">↷</button>
+      <button class="ib" id="iFind" title="Buscar y reemplazar">🔍</button>
+      <button class="ib" id="iDiff" title="Comparar con el original">⇄</button>
+      <button class="ib" id="iJava" title="Ver como Java (solo lectura)">☕ Java</button>
+      <button class="ib go" id="iBuild" title="Guardar y compilar">▶ Compilar</button>
+      <button class="ib" id="iMore" title="Más">⋯</button>
+    </div>
+    <div class="idetabs" id="iTabs"></div>
+    <div class="idecrumb" id="iCrumb"></div>
+    <div class="idefind" id="iFindBar" hidden>
+      <input type="search" id="fq" placeholder="Buscar"><input type="text" id="fr" placeholder="Reemplazar por">
+      <button class="ib" id="fPrev">↑</button><button class="ib" id="fNext">↓</button><button class="ib" id="fRep">Cambiar</button><button class="ib" id="fAll">Todo</button>
+    </div>
+    <div class="idebody"><div class="idedit" id="iEdit"></div><pre class="diff" id="iDiffView" hidden></pre><div class="idempty" id="iEmpty">Toca 📁 para abrir un archivo.</div></div>
+    <div class="idestatus"><span id="iPos"></span><span id="iBuildMsg"></span></div>
+    <div class="idemask" id="iMask" hidden></div>
+    <div class="idepanel" id="iPanel" hidden></div>
+    <div class="idemenu" id="iMenu" hidden>
+      <button data-m="saveall">Guardar todo</button><button data-m="restore">Restaurar archivo original</button>
+      <button data-m="close">Cerrar esta pestaña</button><button data-m="closeall">Cerrar todas las pestañas</button>
+    </div>
+  </div>`;
+  try { await loadCM(); } catch (e) { $("#iEmpty").textContent = e.message; toast(e.message, "err"); return; }
+  const cm = IDE.cm = CodeMirror($("#iEdit"), { theme: "material-darker", lineNumbers: true, lineWrapping: false, indentUnit: 4, tabSize: 4, value: "" });
   let vt = 0;
-  const validate = () => {
-    const t = cm.getValue(); let m = "";
-    if (e === "json") { try { JSON.parse(t); m = "✔ JSON válido"; } catch (x) { m = "⚠ JSON inválido: " + x.message; } }
-    else if (e === "xml" || e === "svg") { const er = new DOMParser().parseFromString(t, "application/xml").querySelector("parsererror"); m = er ? "⚠ XML mal formado" : "✔ XML bien formado"; }
-    const c = cm.getCursor(); q("#msg").textContent = (m ? m + " · " : "") + "Línea " + (c.line + 1) + ", col " + (c.ch + 1);
-  };
-  cm.on("change", () => { state(); clearTimeout(vt); vt = setTimeout(validate, 350); });
-  cm.on("cursorActivity", () => { clearTimeout(vt); vt = setTimeout(validate, 150); });
-  state(); validate(); setTimeout(() => cm.refresh(), 50);
+  cm.on("change", () => {
+    const t = IDE.tabs[IDE.active]; if (!t) return;
+    const d = tabDirty(t); if (d !== t.wasDirty) { t.wasDirty = d; ideTabsUi(); }
+    clearTimeout(vt); vt = setTimeout(ideValidate, 350);
+  });
+  cm.on("cursorActivity", ideStatusLine);
 
-  q("#bSave").onclick = async () => {
-    try {
-      const r = await api(`${root}/file`, { method: "PUT", headers: jsonHdr, body: JSON.stringify({ path, content: cm.getValue() }) });
-      gen = cm.changeGeneration(); isMod = r.modified; state();
-      (r.warnings || []).forEach(w => toast("⚠ " + w, "warn"));
-      toast(r.modified ? "Guardado" : "Igual al original: sin cambios");
-      await afterChange();
-    } catch (x) { toast(x.message, "err"); }
+  $("#iFiles").onclick = openPanel;
+  $("#iMask").onclick = closePanel;
+  $("#iSave").onclick = async () => { const t = IDE.tabs[IDE.active]; if (t && await ideSave(t)) toast(t.mod ? "Guardado" : "Igual al original: sin cambios"); };
+  $("#iUndo").onclick = () => { cm.undo(); cm.focus(); };
+  $("#iRedo").onclick = () => { cm.redo(); cm.focus(); };
+  $("#iFind").onclick = () => { const b = $("#iFindBar"); b.hidden = !b.hidden; if (!b.hidden) { const s = cm.getSelection(); if (s && !s.includes("\n")) $("#fq").value = s; $("#fq").focus(); } cm.refresh(); };
+  $("#iDiff").onclick = ideDiff;
+  $("#iJava").onclick = ideJavaButton;
+  $("#iBuild").onclick = ideBuild;
+  $("#iMore").onclick = () => { const m = $("#iMenu"); m.hidden = !m.hidden; };
+  $("#iMenu").onclick = async e => {
+    const b = e.target.closest("[data-m]"); if (!b) return; $("#iMenu").hidden = true;
+    if (b.dataset.m === "saveall") { let n = 0; for (const t of IDE.tabs.filter(tabDirty)) { if (!(await ideSave(t))) return; n++; } toast(n ? `${n} archivo(s) guardado(s)` : "No hay cambios sin guardar", n ? "ok" : "warn"); }
+    else if (b.dataset.m === "restore") ideRestore();
+    else if (b.dataset.m === "close") ideClose(IDE.active);
+    else if (b.dataset.m === "closeall") { if (IDE.tabs.some(tabDirty) && !confirm("Hay cambios sin guardar. ¿Cerrar todas las pestañas?")) return; IDE.tabs = []; IDE.active = -1; ideShow(); }
   };
-  q("#bUndo").onclick = () => { cm.undo(); cm.focus(); };
-  q("#bRedo").onclick = () => { cm.redo(); cm.focus(); };
+  $("#iTabs").onclick = e => {
+    const x = e.target.closest("[data-x]"); if (x) return ideClose(Number(x.dataset.x));
+    const t = e.target.closest("[data-i]"); if (t) { IDE.active = Number(t.dataset.i); ideShow(); }
+  };
 
-  const fb = q("#findbar"), fq = q("#fq"), fr = q("#fr"), Pos = CodeMirror.Pos;
-  q("#bFind").onclick = () => { fb.hidden = !fb.hidden; if (!fb.hidden) { const s = cm.getSelection(); if (s && !s.includes("\n")) fq.value = s; fq.focus(); } cm.refresh(); };
+  const Pos = CodeMirror.Pos, fq = $("#fq"), fr = $("#fr");
   const findNext = rev => {
     const t = fq.value; if (!t) return;
     let sc = cm.getSearchCursor(t, cm.getCursor(rev ? "from" : "to"), { caseFold: true });
@@ -742,44 +870,267 @@ async function openTextEditor(path, where = "apk") {
     }
     cm.setSelection(sc.from(), sc.to()); cm.scrollIntoView({ from: sc.from(), to: sc.to() }, 60);
   };
-  q("#fNext").onclick = () => findNext(false); q("#fPrev").onclick = () => findNext(true);
+  $("#fNext").onclick = () => findNext(false); $("#fPrev").onclick = () => findNext(true);
   fq.onkeydown = ev => { if (ev.key === "Enter") findNext(ev.shiftKey); };
-  q("#fRep").onclick = () => {
-    const t = fq.value; if (!t) return;
-    if (cm.getSelection().toLowerCase() === t.toLowerCase()) cm.replaceSelection(fr.value);
-    findNext(false);
-  };
-  q("#fAll").onclick = () => {
+  $("#fRep").onclick = () => { const t = fq.value; if (!t) return; if (cm.getSelection().toLowerCase() === t.toLowerCase()) cm.replaceSelection(fr.value); findNext(false); };
+  $("#fAll").onclick = () => {
     const t = fq.value; if (!t) return;
     const sc = cm.getSearchCursor(t, Pos(0, 0), { caseFold: true }); let n = 0;
     cm.operation(() => { while (sc.findNext()) { sc.replace(fr.value); n++; } });
     toast(n + " reemplazo(s)", n ? "ok" : "warn");
   };
 
-  q("#bDiff").onclick = async () => {
-    showDiff = !showDiff; const dv = q("#diff"), w = q(".CodeMirror");
-    if (showDiff) {
-      if (origText === null) {
-        try { origText = (await api(`${root}/file?path=${enc(path)}&version=original`)).content; }
-        catch (x) { showDiff = false; return toast(x.message, "err"); }
-      }
-      dv.innerHTML = renderDiff(origText, cm.getValue());
-    }
-    dv.hidden = !showDiff; w.style.visibility = showDiff ? "hidden" : "visible";
-    q("#bDiff").textContent = showDiff ? "Volver al editor" : "Comparar";
-    if (!showDiff) cm.refresh();
+  ideShow();
+  ideWatchBuild(true);
+  if (IDE.pending) { const p = IDE.pending; IDE.pending = null; ideOpen(p.path, p.where); }
+}
+
+function ideShow() {
+  const t = IDE.tabs[IDE.active], cm = IDE.cm; if (!cm) return;
+  $("#iEmpty").hidden = !!t;
+  cm.swapDoc(t ? t.doc : CodeMirror.Doc("", null));
+  cm.setOption("readOnly", !!(t && t.readOnly));
+  setTimeout(() => cm.refresh(), 0);
+  IDE.valMsg = "";
+  showDiffView(false); ideTabsUi(); ideCrumb(); ideValidate();
+}
+function ideTabsUi() {
+  const box = $("#iTabs"); if (!box) return;
+  box.innerHTML = IDE.tabs.map((t, i) => `<div class="itab ${i === IDE.active ? "on" : ""}" data-i="${i}" title="${esc(t.path)}"><span>${t.where === "java" ? "☕ " : ""}${esc(baseFile(t.path))}</span>${tabDirty(t) ? '<span class="dot">●</span>' : t.mod ? '<span class="dot ok">●</span>' : ""}<button data-x="${i}" aria-label="Cerrar pestaña">✕</button></div>`).join("")
+    || '<div class="itab" style="color:var(--muted)">Sin archivos abiertos</div>';
+  const on = box.querySelector(".itab.on"); if (on) on.scrollIntoView({ block: "nearest", inline: "nearest" });
+}
+function ideCrumb() {
+  const c = $("#iCrumb"), t = IDE.tabs[IDE.active]; if (!c) return;
+  c.innerHTML = t ? `${esc(CUR.p.name)} › ${esc(t.path).split("/").join(" › ")}${t.where === "decoded" ? " · Apktool" : t.where === "java" ? " · solo lectura" : ""}` : esc(CUR.p.name);
+}
+function ideStatusLine() {
+  const el = $("#iPos"), cm = IDE.cm, t = IDE.tabs[IDE.active]; if (!el || !cm) return;
+  if (!t) { el.textContent = ""; return; }
+  const c = cm.getCursor();
+  el.textContent = (IDE.valMsg ? IDE.valMsg + " · " : "") + `Línea ${c.line + 1}, col ${c.ch + 1}`;
+}
+function ideValidate() {
+  const t = IDE.tabs[IDE.active]; IDE.valMsg = "";
+  if (t) {
+    const e = extOf(t.path), txt = t.doc.getValue();
+    if (t.where === "java") IDE.valMsg = "☕ Java aproximado · solo lectura";
+    else if (e === "json") { try { JSON.parse(txt); IDE.valMsg = "✔ JSON válido"; } catch (x) { IDE.valMsg = "⚠ JSON inválido"; } }
+    else if (e === "xml" || e === "svg") { const er = new DOMParser().parseFromString(txt, "application/xml").querySelector("parsererror"); IDE.valMsg = er ? "⚠ XML mal formado" : "✔ XML bien formado"; }
+  }
+  ideStatusLine();
+}
+function showDiffView(on) { const dv = $("#iDiffView"); if (!dv) return; dv.hidden = !on; $("#iEdit").style.visibility = on ? "hidden" : "visible"; }
+
+async function ideOpen(path, where) {
+  const key = where + ":" + path;
+  let i = IDE.tabs.findIndex(t => t.key === key);
+  if (i < 0) {
+    let info;
+    try { info = await api(`${rootOf(where)}/file?path=${enc(path)}`); }
+    catch (e) { return toast(e.message, "err"); }
+    if (!info.editable) return toast(info.reason || "Este archivo no se puede editar.", "err");
+    const doc = CodeMirror.Doc(info.content, modeFor(path));
+    IDE.tabs.push({ key, path, where, doc, gen: doc.changeGeneration(), mod: !!info.modified, orig: info.modified ? null : info.content, wasDirty: false });
+    i = IDE.tabs.length - 1;
+  }
+  IDE.active = i; closePanel(); ideShow();
+}
+function ideClose(i) {
+  const t = IDE.tabs[i]; if (!t) return;
+  if (tabDirty(t) && !confirm(`${baseFile(t.path)} tiene cambios sin guardar. ¿Cerrarlo de todos modos?`)) return;
+  IDE.tabs.splice(i, 1);
+  if (i < IDE.active) IDE.active--; else if (i === IDE.active) IDE.active = Math.min(i, IDE.tabs.length - 1);
+  ideShow();
+}
+async function ideSave(t) {
+  if (t.readOnly) { toast("Esta vista es de solo lectura.", "warn"); return false; }
+  try {
+    const r = await api(`${rootOf(t.where)}/file`, { method: "PUT", headers: jsonHdr, body: JSON.stringify({ path: t.path, content: t.doc.getValue() }) });
+    t.gen = t.doc.changeGeneration(); t.mod = r.modified; t.wasDirty = false;
+    (r.warnings || []).forEach(w => toast("⚠ " + w, "warn"));
+    if (t.where === "decoded") await reloadDecoded(); else await reloadFiles();
+    ideTabsUi(); refreshPanel();
+    return true;
+  } catch (e) { toast(e.message, "err"); return false; }
+}
+async function ideDiff() {
+  const t = IDE.tabs[IDE.active]; if (!t) return toast("Abre un archivo primero.", "warn");
+  if (t.readOnly) return toast("La vista Java es de solo lectura: no hay original que comparar.", "warn");
+  if (!$("#iDiffView").hidden) return showDiffView(false);
+  if (t.orig === null) {
+    try { t.orig = (await api(`${rootOf(t.where)}/file?path=${enc(t.path)}&version=original`)).content; }
+    catch (e) { return toast(e.message, "err"); }
+  }
+  $("#iDiffView").innerHTML = renderDiff(t.orig, t.doc.getValue()); showDiffView(true);
+}
+async function ideRestore() {
+  const t = IDE.tabs[IDE.active]; if (!t) return;
+  if (!t.mod) return toast("Este archivo no tiene cambios guardados.", "warn");
+  if (!confirm("¿Restaurar el archivo original? Se perderán los cambios guardados.")) return;
+  try {
+    await api(`${rootOf(t.where)}/changes?path=${enc(t.path)}`, { method: "DELETE" });
+    const r = await api(`${rootOf(t.where)}/file?path=${enc(t.path)}`);
+    t.doc.setValue(r.content); t.doc.clearHistory(); t.gen = t.doc.changeGeneration(); t.mod = false; t.wasDirty = false; t.orig = r.content;
+    if (t.where === "decoded") await reloadDecoded(); else await reloadFiles();
+    ideTabsUi(); refreshPanel(); toast("Archivo restaurado");
+  } catch (e) { toast(e.message, "err"); }
+}
+
+// Compilar: guarda lo pendiente, reconstruye, firma y muestra el resultado en la barra de abajo
+async function ideBuild() {
+  if ($("#iBuild").disabled) return;
+  for (const t of IDE.tabs.filter(tabDirty)) if (!(await ideSave(t))) return toast(`No se pudo guardar ${baseFile(t.path)}: no se compila.`, "err");
+  try { await api(`/api/projects/${CUR.id}/builds`, { method: "POST" }); }
+  catch (e) { return toast(e.message, "err"); }
+  toast("Compilación iniciada");
+  ideWatchBuild(false);
+}
+async function ideWatchBuild(quiet) {
+  stopPoll();
+  const msg = $("#iBuildMsg"), btn = $("#iBuild"); if (!msg || !btn) return;
+  const tick = async () => {
+    if (!document.body.contains(msg)) return stopPoll();
+    let list; try { list = await api(`/api/projects/${CUR.id}/builds`); } catch { return; }
+    const b = list[0];
+    if (b && (b.status === "queued" || b.status === "running")) { btn.disabled = true; msg.textContent = "⏳ Compilando…"; return; }
+    btn.disabled = false; stopPoll();
+    if (quiet || !b) { msg.textContent = ""; return; }
+    msg.innerHTML = b.status === "success"
+      ? `✔ Compilación #${b.number} lista · ${b.downloadPath ? `<a href="${esc(linkUrl(b.downloadPath))}" style="color:var(--accent)">Descargar</a> · ` : ""}<a href="#/s/build" style="color:var(--accent)">Detalles</a>`
+      : `✖ Falló: ${esc((b.error || "error").slice(0, 140))} · <a href="#/s/build" style="color:var(--accent)">Ver registro</a>`;
   };
-  q("#bRestore").onclick = async () => {
-    if (!isMod) return toast("Este archivo no tiene cambios guardados.", "warn");
-    if (!confirm("¿Restaurar el archivo original? Se perderán los cambios guardados.")) return;
+  await tick();
+  if (btn.disabled) buildTimer = setInterval(tick, 2500);
+}
+
+/* --- Ver como Java (solo lectura, con JADX) --- */
+const classOfSmali = p => p.replace(/^smali(?:_classes\d+)?\//, "").replace(/\.smali$/, "").replace(/\//g, ".");
+const javaBoxHtml = () => `<div class="card" style="margin-bottom:12px"><h2>Ver como Java (solo lectura)</h2>
+  <p class="sub" style="margin-bottom:10px">Muestra una clase como Java aproximado, generado con JADX desde el APK original. Sirve para entender qué hace antes de editar el smali; no se puede recompilar.</p>
+  <input type="text" id="jCls" placeholder="com.ejemplo.MainActivity" autocapitalize="none" autocomplete="off">
+  <div class="row" style="margin-top:10px"><button class="btn primary" id="jGo">☕ Ver como Java</button></div></div>`;
+function bindJavaBox(root) {
+  const go = () => { const c = root.querySelector("#jCls").value.trim(); if (c) ideOpenJava(c); else toast("Escribe el nombre completo de la clase.", "warn"); };
+  root.querySelector("#jGo").onclick = go;
+  root.querySelector("#jCls").onkeydown = e => { if (e.key === "Enter") go(); };
+}
+// Botón ☕ de la barra: si hay un smali abierto, muestra su clase en Java; si no, abre el panel para escribirla
+function ideJavaButton() {
+  const t = IDE.tabs[IDE.active];
+  if (t && t.where === "decoded" && t.path.endsWith(".smali")) return ideOpenJava(classOfSmali(t.path));
+  IDE.panel = "code"; openPanel();
+  toast("Escribe el nombre de la clase o abre un archivo smali y pulsa ☕.", "warn");
+}
+async function ideOpenJava(cls) {
+  const key = "java:" + cls;
+  let i = IDE.tabs.findIndex(t => t.key === key);
+  if (i < 0) {
+    toast("Decompilando con JADX… puede tardar un poco.", "warn");
+    let r;
+    try { r = await api(`/api/projects/${CUR.id}/java?class=${enc(cls)}`); }
+    catch (e) { return toast(e.message, "err"); }
+    if (r.truncated) toast("La clase es muy grande: se muestra solo el principio.", "warn");
+    const doc = CodeMirror.Doc(r.code, "text/x-java");
+    IDE.tabs.push({ key, path: cls.replace(/\./g, "/") + ".java", where: "java", doc, gen: doc.changeGeneration(), mod: false, orig: null, wasDirty: false, readOnly: true });
+    i = IDE.tabs.length - 1;
+  }
+  IDE.active = i; closePanel(); ideShow();
+}
+
+/* --- Panel de archivos --- */
+function openPanel() { $("#iPanel").hidden = false; $("#iMask").hidden = false; drawPanel(); }
+function closePanel() { const p = $("#iPanel"); if (p) { p.hidden = true; $("#iMask").hidden = true; } }
+function refreshPanel() { const p = $("#iPanel"); if (p && !p.hidden) drawPanel(); }
+
+async function drawPanel() {
+  const p = $("#iPanel"); if (!p) return;
+  const seg = (k, t) => `<button data-p="${k}" class="${IDE.panel === k ? "on" : ""}">${t}</button>`;
+  p.innerHTML = `<div class="ph"><div class="seg">${seg("res", "XML")}${seg("code", "Código")}${seg("assets", "Assets")}</div><button class="ib" id="pClose" aria-label="Cerrar">✕</button></div><div class="pb" id="pBody">Cargando…</div>`;
+  p.querySelectorAll("[data-p]").forEach(b => b.onclick = () => { IDE.panel = b.dataset.p; drawPanel(); });
+  $("#pClose").onclick = closePanel;
+  const body = $("#pBody");
+  if (IDE.panel === "assets") return panelAssets(body);
+  try { await reloadDecoded(); } catch (e) { body.innerHTML = `<div class="note">${esc(e.message)}</div>`; return; }
+  const d = CUR.dec;
+  if (d.status !== "ready") {
+    body.innerHTML = decodeCardHtml(d); bindDecode(body, drawPanel);
+    if (IDE.panel === "code") { body.insertAdjacentHTML("afterbegin", javaBoxHtml()); bindJavaBox(body); }
+    if (d.status === "running") startDecPoll(body, drawPanel);
+    return;
+  }
+  return IDE.panel === "res" ? panelRes(body, d) : panelCode(body, d);
+}
+
+function panelRes(body, d) {
+  body.innerHTML = `<input type="search" id="pq" placeholder="Buscar (strings, colors, styles…)" value="${esc(IDE.q.res)}"><div class="files" id="pList" style="margin-top:8px;max-height:none"></div>`;
+  const draw = () => {
+    const q = IDE.q.res.toLowerCase(), items = d.files.filter(f => !q || f.path.toLowerCase().includes(q));
+    $("#pList").innerHTML = items.slice(0, 400).map(f => `<div class="file" data-o="${esc(f.path)}"><span>${f.modified ? "● " : ""}${esc(f.path)}</span><span>${fmt(f.size)}</span></div>`).join("") || '<div class="file">Sin resultados</div>';
+  };
+  draw();
+  $("#pq").oninput = e => { IDE.q.res = e.target.value; draw(); };
+  $("#pList").onclick = e => { const r = e.target.closest("[data-o]"); if (r) ideOpen(r.dataset.o, "decoded"); };
+}
+
+function panelCode(body, d) {
+  if (d.mode !== "full") {
+    body.innerHTML = javaBoxHtml() + `<div class="note">Este proyecto se decodificó solo con recursos. Para editar el código hay que decodificarlo con código (smali). Se borran los cambios de Apktool que no hayas compilado.</div>
+      <div class="row" style="margin-top:12px"><button class="btn primary" id="toFull">Decodificar con código</button></div>`;
+    bindJavaBox(body);
+    $("#toFull").onclick = async () => {
+      if (d.files.some(f => f.modified) && !confirm("Se perderán los cambios de Apktool sin compilar. ¿Seguir?")) return;
+      try { await api(`/api/projects/${CUR.id}/decode?code=1`, { method: "POST" }); toast("Decodificación iniciada"); await reloadDecoded(); drawPanel(); }
+      catch (e) { toast(e.message, "err"); }
+    };
+    return;
+  }
+  body.innerHTML = javaBoxHtml() + `<div class="note" style="margin-bottom:8px">El código está en <b>smali</b> (ensamblador de Android), no en Java/Kotlin. Un error de sintaxis impide compilar.</div>
+    <input type="search" id="cq" placeholder="Buscar clase (ej. MainActivity)" value="${esc(IDE.q.code)}">
+    <div id="cCrumb" class="perm" style="margin:8px 0;word-break:break-all"></div><div class="files" id="cList" style="max-height:none"></div>`;
+  bindJavaBox(body);
+  let timer = 0;
+  const load = async () => {
+    const q = IDE.q.code.trim(), list = $("#cList"); if (!list) return;
+    list.innerHTML = '<div class="file">Cargando…</div>';
     try {
-      await api(`${root}/changes?path=${enc(path)}`, { method: "DELETE" });
-      const r = await api(`${root}/file?path=${enc(path)}`);
-      cm.setValue(r.content); cm.clearHistory(); gen = cm.changeGeneration(); isMod = false; state(); validate();
-      toast("Archivo restaurado"); await afterChange();
-    } catch (x) { toast(x.message, "err"); }
+      const r = await api(`/api/projects/${CUR.id}/decoded/tree?` + (q.length >= 2 ? `q=${enc(q)}` : `dir=${enc(IDE.dir)}`));
+      $("#cCrumb").textContent = r.searched ? `Resultados para “${q}”` : "📂 " + (IDE.dir || "(raíz)");
+      const up = !r.searched && IDE.dir ? `<div class="file" data-d="${esc(IDE.dir.split("/").slice(0, -1).join("/"))}"><span>⬆ Subir</span><span></span></div>` : "";
+      list.innerHTML = up + (r.entries.map(e => e.type === "dir"
+        ? `<div class="file" data-d="${esc(e.path)}"><span>📁 ${esc(e.name)}</span><span></span></div>`
+        : `<div class="file" data-f="${esc(e.path)}"><span style="word-break:break-all">${e.modified ? "● " : ""}📄 ${esc(r.searched ? e.path : e.name)}</span><span>${e.size ? fmt(e.size) : ""}</span></div>`).join("") || '<div class="file">Vacío</div>');
+    } catch (e) { list.innerHTML = `<div class="file" style="color:var(--err)">${esc(e.message)}</div>`; }
   };
-  q("#bClose").onclick = () => { if (dirty() && !confirm("Hay cambios sin guardar. ¿Salir de todos modos?")) return; ov.close(); };
+  load();
+  $("#cq").oninput = e => { IDE.q.code = e.target.value; clearTimeout(timer); timer = setTimeout(load, 350); };
+  $("#cList").onclick = e => {
+    const dd = e.target.closest("[data-d]"); if (dd) { IDE.dir = dd.dataset.d; IDE.q.code = ""; $("#cq").value = ""; return load(); }
+    const f = e.target.closest("[data-f]"); if (f) ideOpen(f.dataset.f, "decoded");
+  };
+}
+
+function panelAssets(body) {
+  body.innerHTML = `<input type="search" id="aq" placeholder="Buscar archivo…" value="${esc(IDE.q.assets)}">
+    <label class="row" style="min-height:40px;gap:10px"><input type="checkbox" id="aAll" ${IDE.showAll ? "checked" : ""} style="width:22px;height:22px"><span class="perm">Ver todos los archivos del APK (solo lectura)</span></label>
+    <div class="files" id="aList" style="max-height:none"></div>`;
+  const draw = () => {
+    const q = IDE.q.assets.toLowerCase();
+    const items = CUR.files.filter(f => (IDE.showAll || (f.kind === "text" && f.editable)) && (!q || f.path.toLowerCase().includes(q)));
+    $("#aList").innerHTML = items.slice(0, 400).map(f => `<div class="file" data-a="${esc(f.path)}"><span>${f.modified ? "● " : ""}${esc(f.path)}${f.editable ? ` <em class="tag">${f.kind === "text" ? "texto" : "imagen"}</em>` : ""}</span><span>${fmt(f.size)}</span></div>`).join("")
+      || '<div class="file">Sin archivos de texto editables. Marca “Ver todos”.</div>';
+  };
+  draw();
+  $("#aq").oninput = e => { IDE.q.assets = e.target.value; draw(); };
+  $("#aAll").onchange = e => { IDE.showAll = e.target.checked; draw(); };
+  $("#aList").onclick = async e => {
+    const r = e.target.closest("[data-a]"); if (!r) return;
+    const f = CUR.files.find(x => x.path === r.dataset.a); if (!f) return;
+    if (f.kind === "text" && f.editable) return ideOpen(f.path, "apk");
+    if (f.kind === "image" && f.editable) { closePanel(); return openImageEditor(f.path); }
+    try { const info = await api(`/api/projects/${CUR.id}/file?path=${enc(f.path)}`); toast(info.reason || "Este archivo no se puede editar.", "warn"); }
+    catch (x) { toast(x.message, "err"); }
+  };
 }
 
 /* ---------- Editor de imágenes e iconos ---------- */
@@ -924,10 +1275,12 @@ async function runDiag() {
     h.googleLogin ? add("ok", "Inicio de sesión con Google", "Configurado en el servidor (FIREBASE_PROJECT_ID)")
                   : add("bad", "Inicio de sesión con Google", "Falta FIREBASE_PROJECT_ID en el servidor.", "En Render → Environment agrega FIREBASE_PROJECT_ID=kendy-mods.");
     if (h.backup) {
-      !h.backup.enabled ? add("warn", "Respaldo en Cloudinary", "Desactivado: sin él, el disco gratuito borra tus archivos al reiniciar.", "Agrega CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET y BACKUP_KEY (16+ caracteres) en Render.")
+      !h.backup.enabled ? add("warn", "Respaldo en Cloudinary", "Desactivado: sin él, el disco gratuito borra tus archivos al reiniciar.", "En Render agrega CLOUDINARY_CLOUD_NAME + CLOUDINARY_UPLOAD_PRESET (o API key y secret) y BACKUP_KEY (16+ caracteres).")
       : h.backup.lastError ? add("bad", "Respaldo en Cloudinary", "Último error: " + h.backup.lastError, "Revisa las credenciales de Cloudinary.")
-      : add("ok", "Respaldo en Cloudinary", "Activo (cifrado). Pendientes: " + h.backup.pending);
+      : add("ok", "Respaldo en Cloudinary", "Activo (cifrado)" + (h.backup.signed ? "" : ", sin firma: no se borran copias viejas") + ". Pendientes: " + h.backup.pending);
     }
+    h.jadx ? add("ok", "JADX (ver código como Java)", "Disponible")
+           : add("warn", "JADX (ver código como Java)", "No está instalado en el servidor.", "Despliega con el Dockerfile nuevo.");
     h.apktool ? add("ok", "Apktool (propiedades y XML)", "apktool y aapt2 disponibles")
               : add("warn", "Apktool (propiedades y XML)", "Falta: " + ((h.apktoolMissing || []).join(", ") || "configuración"), "Despliega con el Dockerfile nuevo. Sin esto no funciona la pestaña Propiedades.");
     add("ok", "Límite de subida", (h.maxMb || "?") + " MB");
@@ -999,16 +1352,28 @@ function viewSettings() {
 }
 
 /* ---------- Router ---------- */
+const side = $("#side");
+function openMenu() { side.classList.add("open"); document.body.classList.add("menu"); }
+function closeMenu() { side.classList.remove("open"); document.body.classList.remove("menu"); }
+
 function route() {
   stopPoll();
   const [, r, arg] = (location.hash || "#/home").split("/");
   renderWho();
   if (!getToken() && !["login", "settings", "diag"].includes(r)) { location.hash = "#/login"; return; }
-  $("#side").classList.remove("open");
-  document.querySelectorAll(".nav[data-r]").forEach(a => a.classList.toggle("active", a.dataset.r === (r === "project" ? "projects" : r)));
-  ({ home: viewHome, import: viewImport, projects: viewProjects, settings: viewSettings, diag: viewDiag, login: viewLogin, admin: viewAdmin }[r] || (r === "project" ? () => viewProject(arg) : viewHome))();
+  closeMenu();
+  $("#view").scrollTop = 0;
+  view.classList.remove("ide-mode");
+  const key = r === "s" ? "s:" + arg : r === "project" ? "projects" : r;
+  document.querySelectorAll(".nav[data-r]").forEach(a => a.classList.toggle("active", a.dataset.r === key));
+  if (r === "s") return viewSection(arg);
+  ({ home: viewHome, import: viewImport, projects: viewProjects, settings: viewSettings, diag: viewDiag, login: viewLogin, admin: viewAdmin }[r]
+    || (r === "project" ? () => viewProject(arg) : viewHome))();
 }
-$("#burger").onclick = () => $("#side").classList.toggle("open");
+$("#burger").onclick = () => (side.classList.contains("open") ? closeMenu() : openMenu());
+$("#closeSide").onclick = closeMenu;
+$("#backdrop").onclick = closeMenu;
+addEventListener("keydown", e => { if (e.key === "Escape") closeMenu(); });
 addEventListener("hashchange", route); route();
 </script>
 </body>
