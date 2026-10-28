@@ -247,4 +247,4 @@ export async function buildRoutes(app: FastifyInstance) {
       .header("X-Content-Type-Options", "nosniff")
       .send(createReadStream(file));
   });
-                                                                                                          }
+                                 }
