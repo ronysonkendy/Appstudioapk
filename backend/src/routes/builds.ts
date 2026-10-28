@@ -84,7 +84,9 @@ async function runBuild(projectId: string, buildId: string) {
     const { rows: dr } = await pool.query(`SELECT count(*)::int AS n FROM decode_edits WHERE project_id=$1`, [projectId]);
     const decEdits: number = dr[0].n;
     const useApktool = p.decode_status === "ready" && decEdits > 0;
-    if (useApktool && !(await hasDecodedDir(projectId))) await rehydrateDecoded(projectId, p.original_path);
+
+    if (useApktool && !(await hasDecodedDir(projectId))) await rehydrateDecoded(projectId, p.original_path, p.decode_mode === "full");
+
     const res = await rebuildApk(p.original_path, changes, workDir, useApktool ? decodedDir(projectId) : undefined);
     log = res.log;
     const buildsDir = join(projectDir(projectId), "builds");
@@ -245,4 +247,4 @@ export async function buildRoutes(app: FastifyInstance) {
       .header("X-Content-Type-Options", "nosniff")
       .send(createReadStream(file));
   });
-                               }
+                                                                                                          }
