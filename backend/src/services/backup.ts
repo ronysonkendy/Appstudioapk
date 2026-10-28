@@ -48,6 +48,7 @@ export async function backupFile(rel: string): Promise<void> {
       const buf = Buffer.alloc(len);
       if (len) await fh.read(buf, 0, len, pos);
       pos += len;
+      const pid = `${dir}/${stamp}_${i}`;
       const up = await cloudUpload(pid, encryptChunk(buf, key()));
       urls.push(up.url);
       ids.push(up.publicId);
@@ -60,7 +61,7 @@ export async function backupFile(rel: string): Promise<void> {
      ON CONFLICT (rel_path) DO UPDATE SET parts=EXCLUDED.parts, size_bytes=EXCLUDED.size_bytes, sha256=EXCLUDED.sha256,
        urls=EXCLUDED.urls, public_ids=EXCLUDED.public_ids, updated_at=now()`,
     [rel, ids.length, st.size, sha, JSON.stringify(urls), JSON.stringify(ids)]);
-  for (const pid of (rows[0]?.public_ids ?? []) as string[]) await cloudDestroy(pid).catch(() => {}); // versión anterior
+  for (const old of (rows[0]?.public_ids ?? []) as string[]) await cloudDestroy(old).catch(() => {}); // versión anterior
 }
 
 export async function restoreFile(rel: string): Promise<boolean> {
@@ -136,4 +137,4 @@ export async function dropBackup(abs: string) {
 export async function dropBackupPrefix(relPrefix: string) {
   const { rows } = await pool.query(`DELETE FROM backup_files WHERE starts_with(rel_path, $1) RETURNING public_ids`, [relPrefix]);
   if (backupEnabled()) await dropRows(rows);
-}
+        }
