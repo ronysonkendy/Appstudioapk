@@ -1,0 +1,1 @@
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS decode_mode TEXT NOT NULL DEFAULT 'res';
