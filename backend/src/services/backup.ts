@@ -48,9 +48,9 @@ export async function backupFile(rel: string): Promise<void> {
       const buf = Buffer.alloc(len);
       if (len) await fh.read(buf, 0, len, pos);
       pos += len;
-      const pid = `${config.backupPrefix}/${dir}/${stamp}-${i}.bin`;
-      urls.push(await cloudUpload(pid, encryptChunk(buf, key())));
-      ids.push(pid);
+      const up = await cloudUpload(pid, encryptChunk(buf, key()));
+      urls.push(up.url);
+      ids.push(up.publicId);
       if (pos >= st.size) break;
     }
   } finally { await fh.close(); }
