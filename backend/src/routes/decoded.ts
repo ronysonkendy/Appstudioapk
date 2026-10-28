@@ -5,8 +5,8 @@ import { decodeApk } from "../services/apktool.js";
 import { enqueue } from "../services/queue.js";
 import { ensureLocalFile } from "../services/backup.js";
 import {
-  MAX_DECODED, decodedDir, editedPaths, hasDecodedDir, isEditablePath, listDecoded, readDecoded,
-  rehydrateDecoded, resetDecoded, restoreAllDecoded, restoreDecoded, writeDecoded,
+  MAX_DECODED, decodedDir, editedPaths, hasDecodedDir, isEditablePath, isSmaliDirPath, listDecoded, listSmaliDir,
+  readDecoded, rehydrateDecoded, resetDecoded, restoreAllDecoded, restoreDecoded, searchSmali, writeDecoded,
 } from "../services/decodedStore.js";
 import { PropError, applyProperties, readProperties, type PropInput } from "../services/properties.js";
 
@@ -29,14 +29,14 @@ export async function recoverDecodes() {
      WHERE decode_status='running'`);
 }
 
-async function runDecode(id: string) {
+async function runDecode(id: string, withCode: boolean) {
   try {
     const { rows } = await pool.query(`SELECT original_path FROM projects WHERE id=$1`, [id]);
     if (!rows[0]) return;
     if (!(await ensureLocalFile(rows[0].original_path)))
       throw new Error("El APK original ya no está en el servidor (el disco gratuito se reinicia). Vuelve a importarlo.");
     await resetDecoded(id);
-    await decodeApk(rows[0].original_path, decodedDir(id));
+    await decodeApk(rows[0].original_path, decodedDir(id), withCode);
     await pool.query(`UPDATE projects SET decode_status='ready', decode_error=NULL WHERE id=$1`, [id]);
   } catch (e: any) {
     await rm(decodedDir(id), { recursive: true, force: true }).catch(() => {});
@@ -48,11 +48,11 @@ async function runDecode(id: string) {
 // Tras un reinicio el disco está vacío: se vuelve a decodificar y se reaplican las ediciones respaldadas.
 async function runRehydrate(id: string) {
   try {
-    const { rows } = await pool.query(`SELECT original_path FROM projects WHERE id=$1`, [id]);
+    const { rows } = await pool.query(`SELECT original_path, decode_mode FROM projects WHERE id=$1`, [id]);
     if (!rows[0]) return;
     if (!(await ensureLocalFile(rows[0].original_path)))
       throw new Error("El APK original ya no está en el servidor. Vuelve a importarlo.");
-    await rehydrateDecoded(id, rows[0].original_path);
+    await rehydrateDecoded(id, rows[0].original_path, rows[0].decode_mode === "full");
     await pool.query(`UPDATE projects SET decode_status='ready', decode_error=NULL WHERE id=$1`, [id]);
   } catch (e: any) {
     await pool.query(`UPDATE projects SET decode_status='failed', decode_error=$2 WHERE id=$1`,
@@ -63,14 +63,16 @@ async function runRehydrate(id: string) {
 export async function decodedRoutes(app: FastifyInstance) {
   type Q = { Params: { id: string }; Querystring: { path?: string; version?: string } };
 
-  // Iniciar (o repetir) la decodificación. Repetirla borra los cambios de Apktool.
-  app.post<{ Params: { id: string } }>("/api/projects/:id/decode", async (req, reply) => {
+  // Iniciar (o repetir) la decodificación. Con ?code=1 también se decodifica el código (smali).
+  // Repetirla borra los cambios de Apktool.
+  app.post<{ Params: { id: string }; Querystring: { code?: string } }>("/api/projects/:id/decode", async (req, reply) => {
     const p = await getProject(req.params.id, req.userId);
     if (!p) return bad(reply, 404, "NOT_FOUND", "Proyecto no encontrado.");
     if (p.decode_status === "running") return bad(reply, 409, "BUSY", "Ya se está decodificando este proyecto.");
-    await pool.query(`UPDATE projects SET decode_status='running', decode_error=NULL WHERE id=$1`, [p.id]);
-    enqueue(() => runDecode(p.id));
-    return reply.code(202).send({ status: "running" });
+    const withCode = req.query.code === "1";
+    await pool.query(`UPDATE projects SET decode_status='running', decode_error=NULL, decode_mode=$2 WHERE id=$1`, [p.id, withCode ? "full" : "res"]);
+    enqueue(() => runDecode(p.id, withCode));
+    return reply.code(202).send({ status: "running", mode: withCode ? "full" : "res" });
   });
 
   app.get<{ Params: { id: string } }>("/api/projects/:id/decoded", async (req, reply) => {
@@ -79,12 +81,31 @@ export async function decodedRoutes(app: FastifyInstance) {
     if (p.decode_status === "ready" && !(await hasDecodedDir(p.id))) {
       await pool.query(`UPDATE projects SET decode_status='running', decode_error=NULL WHERE id=$1`, [p.id]);
       enqueue(() => runRehydrate(p.id));
-      return { status: "running", error: null, files: [] };
+      return { status: "running", error: null, mode: p.decode_mode, files: [] };
     }
-    if (p.decode_status !== "ready") return { status: p.decode_status, error: p.decode_error, files: [] };
+    if (p.decode_status !== "ready") return { status: p.decode_status, error: p.decode_error, mode: p.decode_mode, files: [] };
     const edited = await editedPaths(p.id);
     const files = (await listDecoded(p.id)).map((f) => ({ ...f, modified: edited.has(f.path) }));
-    return { status: "ready", error: null, files };
+    return { status: "ready", error: null, mode: p.decode_mode, files };
+  });
+
+  // Explorador del código smali: carpeta (?dir=) o búsqueda por nombre de clase (?q=)
+  app.get<{ Params: { id: string }; Querystring: { dir?: string; q?: string } }>("/api/projects/:id/decoded/tree", async (req, reply) => {
+    const p = await getProject(req.params.id, req.userId);
+    if (!p || p.decode_status !== "ready") return bad(reply, 404, "NOT_READY", "Primero decodifica el APK.");
+    if (p.decode_mode !== "full")
+      return bad(reply, 422, "NO_CODE", "Este proyecto se decodificó sin el código. Decodifícalo con código (smali).");
+    const edited = await editedPaths(p.id);
+    const mark = (e: { path: string }) => ({ ...e, modified: edited.has(e.path) });
+    const q = (req.query.q ?? "").trim();
+    if (q) {
+      if (q.length < 2 || q.length > 80) return bad(reply, 422, "BAD_QUERY", "Escribe entre 2 y 80 caracteres para buscar.");
+      return { searched: true, entries: (await searchSmali(p.id, q)).map(mark) };
+    }
+    const dir = req.query.dir ?? "";
+    if (!isSmaliDirPath(dir)) return bad(reply, 422, "BAD_DIR", "Carpeta inválida.");
+    try { return { dir, entries: (await listSmaliDir(p.id, dir)).map(mark) }; }
+    catch { return bad(reply, 404, "NOT_FOUND", "Esa carpeta no existe."); }
   });
 
   app.get<Q>("/api/projects/:id/decoded/file", async (req, reply) => {
@@ -147,4 +168,4 @@ export async function decodedRoutes(app: FastifyInstance) {
       throw e;
     }
   });
-                     }
+                       }
