@@ -5,11 +5,12 @@ import { config } from "../config.js";
 
 const run = promisify(execFile);
 
-// Decodifica recursos y manifiesto (-s: no decodifica el código; el DEX se conserva tal cual).
-export async function decodeApk(original: string, outDir: string): Promise<void> {
+// Decodifica recursos y manifiesto. Sin withCode usa -s: el código (DEX) no se decodifica y se conserva tal cual.
+// Con withCode también se genera el código smali (editable, más lento y con más memoria).
+export async function decodeApk(original: string, outDir: string, withCode = false): Promise<void> {
   await rm(outDir, { recursive: true, force: true });
   try {
-    await run(config.apktoolBin, ["d", "-f", "-s", "-o", outDir, original], {
+    await run(config.apktoolBin, ["d", "-f", ...(withCode ? [] : ["-s"]), "-o", outDir, original], {
       timeout: config.apktoolTimeoutMs, maxBuffer: 16 * 1024 * 1024,
       env: { ...process.env, JAVA_TOOL_OPTIONS: config.apktoolJavaOpts },
     });
