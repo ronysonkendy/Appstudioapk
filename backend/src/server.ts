@@ -16,9 +16,11 @@ import { buildRoutes, recoverBuilds } from "./routes/builds.js";
 import { decodedRoutes, recoverDecodes } from "./routes/decoded.js";
 import { authRoutes } from "./routes/auth.js";
 import { adminRoutes } from "./routes/admin.js";
+import { javaRoutes } from "./routes/java.js";
 import { authenticate } from "./services/auth.js";
 import { signingConfigured } from "./services/signing.js";
 import { backupEnabled, backupStatus } from "./services/backup.js";
+import { cloudSigned } from "./services/cloudinary.js";
 import { ZipError } from "./services/zipSafe.js";
 
 const app = Fastify({ logger: { redact: ["req.headers.authorization"] } });
@@ -76,7 +78,8 @@ async function toolsStatus() {
   const apktoolMissing: string[] = [];
   if (!(await has(config.apktoolBin, ["--version"]))) apktoolMissing.push("apktool");
   if (!(await has(config.aapt2Bin || "aapt2", ["version"]))) apktoolMissing.push("aapt2");
-  const v = { missing, apktoolMissing };
+  const jadxOk = await has(config.jadxBin, ["--version"]);
+  const v = { missing, apktoolMissing, jadxOk };
   toolsCache = { t: Date.now(), v };
   return v;
 }
@@ -100,9 +103,10 @@ app.get("/health", async () => {
   r.missing = missing;
   r.build = missing.length === 0;
   r.googleLogin = !!config.firebaseProjectId;
-  r.backup = { enabled: backupEnabled(), pending: backupStatus.pending, lastError: backupStatus.lastError };
+  r.backup = { enabled: backupEnabled(), signed: cloudSigned(), pending: backupStatus.pending, lastError: backupStatus.lastError };
   r.apktool = (t.apktoolMissing as string[]).length === 0;
   r.apktoolMissing = t.apktoolMissing;
+  r.jadx = t.jadxOk;
   return r;
 });
 await app.register(authRoutes);
@@ -111,6 +115,7 @@ await app.register(projectRoutes);
 await app.register(fileRoutes);
 await app.register(buildRoutes);
 await app.register(decodedRoutes);
+await app.register(javaRoutes);
 
 try { await migrate(); migrated = true; await recoverBuilds(); await recoverDecodes(); }
 catch (e) { app.log.error("Migración fallida: la base de datos no responde"); }
