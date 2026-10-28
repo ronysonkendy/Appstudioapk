@@ -10,6 +10,8 @@ export const config = {
   apktoolBin: process.env.APKTOOL_BIN ?? "apktool",
   aapt2Bin: process.env.AAPT2_BIN ?? "",
   apktoolJavaOpts: process.env.APKTOOL_JAVA_OPTS ?? "-Xmx320m",
+  jadxBin: process.env.JADX_BIN ?? "jadx",
+  jadxJavaOpts: process.env.JADX_JAVA_OPTS ?? "-Xmx300m",
   keystorePassword: process.env.KEYSTORE_PASSWORD ?? "",
   linkTtlHours: Number(process.env.LINK_TTL_HOURS ?? 168),
   allowRegister: process.env.ALLOW_REGISTER !== "false",
@@ -19,6 +21,7 @@ export const config = {
   cloudinaryCloud: process.env.CLOUDINARY_CLOUD_NAME ?? "",
   cloudinaryKey: process.env.CLOUDINARY_API_KEY ?? "",
   cloudinarySecret: process.env.CLOUDINARY_API_SECRET ?? "",
+  cloudinaryPreset: process.env.CLOUDINARY_UPLOAD_PRESET ?? "",
   backupKey: process.env.BACKUP_KEY ?? "",
   backupPrefix: process.env.BACKUP_PREFIX ?? "kendy",
   maxProjectsPerUser: Number(process.env.MAX_PROJECTS_PER_USER ?? 20),
@@ -30,4 +33,5 @@ export const config = {
   toolTimeoutMs: 30_000,
   buildTimeoutMs: 120_000,
   apktoolTimeoutMs: 240_000,
+  jadxTimeoutMs: 90_000,
 };
