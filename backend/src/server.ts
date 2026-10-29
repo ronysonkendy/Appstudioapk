@@ -25,6 +25,14 @@ import { ZipError } from "./services/zipSafe.js";
 
 const app = Fastify({ logger: { redact: ["req.headers.authorization"] } });
 
+// CORS va PRIMERO: así hasta las respuestas 401 llevan los permisos CORS.
+if (process.env.CORS_ORIGIN)
+  await app.register(cors, {
+    origin: process.env.CORS_ORIGIN,
+    methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  });
+
 app.setErrorHandler((e: any, req, reply) => {
   if (e?.code === "ENOENT")
     return reply.code(410).send({ error: { code: "FILE_GONE", message: "Un archivo del proyecto ya no está en el servidor y no hay respaldo (el disco gratuito se reinicia). Vuelve a importar el APK." } });
@@ -55,8 +63,6 @@ app.addHook("onRequest", async (req, reply) => {
 
 await app.register(rateLimit, { max: 240, timeWindow: "1 minute" });
 await app.register(multipart, { limits: { fileSize: config.maxApkBytes, files: 1 } });
-if (process.env.CORS_ORIGIN)
-  await app.register(cors, { origin: process.env.CORS_ORIGIN, methods: ["GET", "HEAD", "POST", "PUT", "DELETE", "OPTIONS"] });
 const frontendDir = process.env.FRONTEND_DIR ? resolve(process.env.FRONTEND_DIR) : null;
 if (frontendDir && existsSync(frontendDir)) await app.register(fstatic, { root: frontendDir });
 
@@ -120,3 +126,4 @@ await app.register(javaRoutes);
 try { await migrate(); migrated = true; await recoverBuilds(); await recoverDecodes(); }
 catch (e) { app.log.error("Migración fallida: la base de datos no responde"); }
 await app.listen({ port: config.port, host: "0.0.0.0" });
+    
